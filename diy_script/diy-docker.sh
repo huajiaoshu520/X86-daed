@@ -33,11 +33,11 @@ sed -i -e 's/29.1.1/29.6.2/g' \
        
 # containerd      
 # wget https://codeload.github.com/containerd/containerd/tar.gz/v2.2.0
-sed -i -e 's/2.2.0/2.2.0/g' \
-       -e 's/86e7a268fc73f5332522baef86082c1d6c17986e2957a9ad842ead35d1080fca/86e7a268fc73f5332522baef86082c1d6c17986e2957a9ad842ead35d1080fca/g' ./feeds/packages/utils/containerd/Makefile
+#sed -i -e 's/2.2.0/2.2.0/g' \
+#       -e 's/86e7a268fc73f5332522baef86082c1d6c17986e2957a9ad842ead35d1080fca/86e7a268fc73f5332522baef86082c1d6c17986e2957a9ad842ead35d1080fca/g' ./feeds/packages/utils/containerd/Makefile
 #sed -i 's/containerd-shim,containerd-shim-runc-v1,//g' ./feeds/packages/utils/containerd/Makefile
 
 # runc
 # https://codeload.github.com/opencontainers/runc/tar.gz/v1.3.4
-sed -i -e 's/1.3.3/1.3.4/g' \
-       -e 's/3da010af5c2c1c3d12d460255e4a7dc049c223ebc629c80fbbe4c10720997ffe/a9f9646c4c8990239f6462b408b22d9aa40ba0473a9fc642b9d6576126495eee/g' ./feeds/packages/utils/runc/Makefile
+#sed -i -e 's/1.3.3/1.3.4/g' \
+#       -e 's/3da010af5c2c1c3d12d460255e4a7dc049c223ebc629c80fbbe4c10720997ffe/a9f9646c4c8990239f6462b408b22d9aa40ba0473a9fc642b9d6576126495eee/g' ./feeds/packages/utils/runc/Makefile
