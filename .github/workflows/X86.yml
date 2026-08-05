@@ -73,9 +73,8 @@ jobs:
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
-        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
         sudo -E apt-get -qq update
-        apt-chache search llvm | head
+        sudo -E apt-get install -y llvm clang lld
         sudo -E apt-get -qq full-upgrade
         sudo -E apt-get -qq install $(curl -fsSL https://github.com/Jason6111/Openwrt_Beta/raw/main/depends-ubuntu-2004)
         sudo -E apt-get -qq autoremove --purge
