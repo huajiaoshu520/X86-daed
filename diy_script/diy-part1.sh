@@ -30,3 +30,4 @@ echo "src-git daed https://github.com/QiuSimons/luci-app-daed" >> "feeds.conf.de
 # Switch to the specific commit (4bb635d) for mbedtls directory
 #rm -rf ./package/libs/mbedtls/patches/100-fix-gcc14-build.patch
 #git checkout 4bb635d -- package/libs/mbedtls
+bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)”
