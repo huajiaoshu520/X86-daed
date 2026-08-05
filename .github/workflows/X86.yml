@@ -75,6 +75,7 @@ jobs:
       run: |
         sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
         sudo -E apt-get -qq update
+        apt-chache search llvm | head
         sudo -E apt-get -qq full-upgrade
         sudo -E apt-get -qq install $(curl -fsSL https://github.com/Jason6111/Openwrt_Beta/raw/main/depends-ubuntu-2004)
         sudo -E apt-get -qq autoremove --purge
@@ -83,16 +84,6 @@ jobs:
         sudo timedatectl set-timezone "$TZ"
         sudo mkdir -p /mnt/workdir
         sudo chown $USER:$GROUPS /mnt/workdir
-        
-    - name: Install LLVM
-      run: |
-          sudo apt-get update
-          sudo apt-get install -y llvm clang lld
-
-    - name: Check version
-      run: |
-          llvm-config --version
-          clang --version
           
     - name: 下载固件源码 #Clone source code
       working-directory: /mnt/workdir
