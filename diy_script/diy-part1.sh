@@ -32,3 +32,18 @@ echo "src-git daed https://github.com/QiuSimons/luci-app-daed" >> "feeds.conf.de
 #git checkout 4bb635d -- package/libs/mbedtls
 curl -L https://raw.githubusercontent.com/immortalwrt/immortalwrt/master/tools/llvm-bpf/Makefile -o tools/llvm-bpf/Makefile
 curl -L https://raw.githubusercontent.com/immortalwrt/immortalwrt/refs/heads/master/include/bpf.mk -o include/bpf.mk
+# 删除原来的 bpf-headers
+rm -rf package/kernel/bpf-headers
+
+# 下载 immortalwrt 的 bpf-headers
+git clone --depth=1 --filter=blob:none --sparse https://github.com/immortalwrt/immortalwrt.git /tmp/immortalwrt
+
+cd /tmp/immortalwrt
+git sparse-checkout init --cone
+git sparse-checkout set package/kernel/bpf-headers
+
+# 复制到 LEDE
+cp -a package/kernel/bpf-headers /mnt/workdir/openwrt/package/kernel/
+
+# 清理临时目录
+rm -rf /tmp/immortalwrt
