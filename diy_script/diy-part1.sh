@@ -25,7 +25,7 @@ echo "src-git helloworld https://github.com/fw876/helloworld;dev" >> "feeds.conf
 echo 'src-git istore https://github.com/linkease/istore;main' >> feeds.conf.default
 echo "src-git daed https://github.com/QiuSimons/luci-app-daed" >> "feeds.conf.default"
 sed -ri "s/(PKG_PATCHVER:=)[^\"]*/\16.18/" package/kernel/bpf-headers/Makefile
-curl -s $mirror/openwrt/patch/packages-patches/bpf-headers/900-fix-build.patch > package/kernel/bpf-headers/patches/900-fix-build.patch
+curl -s https://raw.githubusercontent.com/Q2297045667/OpenWRT_x86_64/refs/heads/master/openwrt/patch/packages-patches/bpf-headers/900-fix-build.patch > package/kernel/bpf-headers/patches/900-fix-build.patch
 # Temp
 #rm -rf ./target/linux/generic/hack-6.12/220-arm-gc_sections.patch
 # Switch to the specific commit (4bb635d) for mbedtls directory
