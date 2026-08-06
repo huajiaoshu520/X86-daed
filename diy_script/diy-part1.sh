@@ -47,3 +47,7 @@ cp -a package/kernel/bpf-headers /mnt/workdir/openwrt/package/kernel/
 
 # 清理临时目录
 rm -rf /tmp/immortalwrt
+
+sed -ri "s/(PKG_PATCHVER:=)[^\"]*/\16.18/" package/kernel/bpf-headers/Makefile
+curl -s https://raw.githubusercontent.com/Q2297045667/OpenWRT_x86_64/refs/heads/master/openwrt/patch/packages-patches/bpf-headers/900-fix-build.patch > package/kernel/bpf-headers/patches/900-fix-build.patch
+
