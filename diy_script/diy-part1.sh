@@ -34,20 +34,4 @@ curl -L https://raw.githubusercontent.com/immortalwrt/immortalwrt/master/tools/l
 curl -L https://raw.githubusercontent.com/immortalwrt/immortalwrt/refs/heads/master/include/bpf.mk -o include/bpf.mk
 # 删除原来的 bpf-headers
 rm -rf package/kernel/bpf-headers
-
-# 下载 immortalwrt 的 bpf-headers
-git clone --depth=1 --filter=blob:none --sparse https://github.com/immortalwrt/immortalwrt.git /tmp/immortalwrt
-
-cd /tmp/immortalwrt
-git sparse-checkout init --cone
-git sparse-checkout set package/kernel/bpf-headers
-
-# 复制到 LEDE
-cp -a package/kernel/bpf-headers /mnt/workdir/openwrt/package/kernel/
-
-# 清理临时目录
-rm -rf /tmp/immortalwrt
-
-sed -ri "s/(PKG_PATCHVER:=)[^\"]*/\16.18/" package/kernel/bpf-headers/Makefile
-curl -s https://raw.githubusercontent.com/Q2297045667/OpenWRT_x86_64/refs/heads/master/openwrt/patch/packages-patches/bpf-headers/900-fix-build.patch > package/kernel/bpf-headers/patches/900-fix-build.patch
-
+git clone https://github.com/huajiaoshu520/bpf-headers ./package/kernel/bpf-headers
