@@ -33,5 +33,7 @@ echo "src-git daed https://github.com/QiuSimons/luci-app-daed" >> "feeds.conf.de
 curl -L https://raw.githubusercontent.com/immortalwrt/immortalwrt/master/tools/llvm-bpf/Makefile -o tools/llvm-bpf/Makefile
 curl -L https://raw.githubusercontent.com/immortalwrt/immortalwrt/refs/heads/master/include/bpf.mk -o include/bpf.mk
 # 删除原来的 bpf-headers
+cp ./include/kernel-6.18 ./target/linux/x86/generic
+cp ./include/kernel-6.18 ./target/linux/generic
 rm -rf package/kernel/bpf-headers
 git clone https://github.com/huajiaoshu520/bpf-headers ./package/kernel/bpf-headers
