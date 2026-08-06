@@ -68,7 +68,17 @@ jobs:
       uses: actions/checkout@main
       with:
         fetch-depth: 0
-      
+        
+    - name: 检查LLVM环境
+      run: |
+        echo "PATH=$PATH"
+        which clang
+        clang --version
+        echo "dumpversion:"
+        clang -dumpversion
+        echo "full:"
+        clang -dumpfullversion
+        ls -l $(which clang)      
     - name: 开始安装编译所需系统 #Initialization environment
       env:
         DEBIAN_FRONTEND: noninteractive
