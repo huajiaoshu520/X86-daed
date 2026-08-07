@@ -2,10 +2,10 @@ name: 更新_检查器 #Update_Checker
 
 env:
 
-  # huajiaoshu520X86源码
-  REPO_URL_huajiaoshu520X86: https://github.com/huajiaoshu520/X86
-  REPO_BRANCH_huajiaoshu520X86: main
-  REPO_PATH_huajiaoshu520X86: "huajiaoshu520X86"
+  # huajiaoshu520X86-daed源码
+  REPO_URL_huajiaoshu520X86daed: https://github.com/huajiaoshu520/X86-daed
+  REPO_BRANCH_huajiaoshu520X86daed: main
+  REPO_PATH_huajiaoshu520X86daed: "huajiaoshu520X86daed"
 
   # Lean源码
   REPO_URL_Lede: https://github.com/coolsnowwolf/lede
@@ -31,6 +31,11 @@ env:
   REPO_URL_istore: https://github.com/linkease/istore
   REPO_BRANCH_istore: main
   REPO_PATH_istore : "istore"
+  
+   # daed源码
+  REPO_URL_daed: https://github.com/QiuSimons/luci-app-daed
+  REPO_BRANCH_daed: main
+  REPO_PATH_daed : "daed"  
 
 on:
   repository_dispatch:
@@ -47,9 +52,9 @@ jobs:
     - name: 获取提交散列 #Get Commit Hash
       id: getHash
       run: |
-        git clone --depth 1 $REPO_URL_huajiaoshu520X86 -b $REPO_BRANCH_huajiaoshu520X86 $REPO_PATH_huajiaoshu520X86
-        cd $REPO_PATH_huajiaoshu520X86
-        echo "commitHash_huajiaoshu520X86=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+        git clone --depth 1 $REPO_URL_huajiaoshu520X86daed -b $REPO_BRANCH_huajiaoshu520X86daed $REPO_PATH_huajiaoshu520X86daed
+        cd $REPO_PATH_huajiaoshu520X86daed
+        echo "commitHash_huajiaoshu520X86daed=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
         cd
 
         git clone --depth 1 $REPO_URL_Lede -b $REPO_BRANCH_Lede $REPO_PATH_Lede
@@ -77,22 +82,29 @@ jobs:
         echo "commitHash_istore=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
         cd
 
+        git clone --depth 1 $REPO_URL_daed -b $REPO_BRANCH_daed $REPO_PATH_daed 
+        cd $REPO_PATH_daed
+        echo "commitHash_daed=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+        cd        
+
     - name: 显示提交头和组合头 #Show Commit Head and Combination Heads
       id: combHeader
       run: |
-        echo "commitHash_huajiaoshu520X86: ${{ steps.getHash.outputs.commitHash_huajiaoshu520X86 }}"
+        echo "commitHash_huajiaoshu520X86daed: ${{ steps.getHash.outputs.commitHash_huajiaoshu520X86daed }}"
         echo "commitHash_Lede: ${{ steps.getHash.outputs.commitHash_Lede }}"
         echo "commitHash_Lede_Package: ${{ steps.getHash.outputs.commitHash_Lede_Package }}"
         echo "commitHash_Lede_Luci: ${{ steps.getHash.outputs.commitHash_Lede_Luci }}"
         echo "commitHash_HelloWorld: ${{ steps.getHash.outputs.commitHash_HelloWorld }}"
         echo "commitHash_istore: ${{ steps.getHash.outputs.commitHash_istore }}"
+        echo "commitHash_daed: ${{ steps.getHash.outputs.commitHash_daed }}"        
         echo "commitHash_All=\
-          ${{steps.getHash.outputs.commitHash_huajiaoshu520X86}}\
+          ${{steps.getHash.outputs.commitHash_huajiaoshu520X86daed}}\
           ${{steps.getHash.outputs.commitHash_Lede}}\
           ${{steps.getHash.outputs.commitHash_Lede_Package}}\
           ${{steps.getHash.outputs.commitHash_Lede_Luci}}\
           ${{steps.getHash.outputs.commitHash_HelloWorld}}\
-          ${{steps.getHash.outputs.commitHash_istore}}" >> $GITHUB_OUTPUT
+          ${{steps.getHash.outputs.commitHash_istore}}\
+          ${{steps.getHash.outputs.commitHash_daed}}" >> $GITHUB_OUTPUT
           
     - name: 比较提交散列 #Compare Commit Hash
       id: cacheHash
@@ -105,12 +117,13 @@ jobs:
     - name: 保存新提交散列 #Save New Commit Hash
       if: steps.cacheHash.outputs.cache-hit != 'true'
       run: |
-        echo ${{ steps.getHash.outputs.commitHash_huajiaoshu520X86 }} | tee .commitHash_huajiaoshu520X86
+        echo ${{ steps.getHash.outputs.commitHash_huajiaoshu520X86daed }} | tee .commitHash_huajiaoshu520X86daed
         echo ${{ steps.getHash.outputs.commitHash_Lede }} | tee .commitHash_Lede
         echo ${{ steps.getHash.outputs.commitHash_Lede_Package }} | tee .commitHash_Lede_Package
         echo ${{ steps.getHash.outputs.commitHash_Lede_Luci }} | tee .commitHash_Lede_Luci
         echo ${{ steps.getHash.outputs.commitHash_HelloWorld }} | tee .commitHash_HelloWorld
         echo ${{ steps.getHash.outputs.commitHash_istore }} | tee .commitHash_istore
+        echo ${{ steps.getHash.outputs.commitHash_daed }} | tee .commitHash_daed
         echo ${{ steps.combHeader.outputs.commitHash_All }} | tee .commitHash_All
 
     - name: 删除工作流程运行 #Delete workflow runs
