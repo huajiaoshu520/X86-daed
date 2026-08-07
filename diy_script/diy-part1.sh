@@ -19,20 +19,13 @@ sed -i 's/IMG_PREFIX:=/IMG_PREFIX:=$(LINUX_VERSION)-/g' include/image.mk
 #sed -i 's/23\.05/25.12/g' feeds.conf.default
 #echo "src-git helloworld https://github.com/Jason6111/helloworld;dev" >> "feeds.conf.default"
 echo "src-git helloworld https://github.com/fw876/helloworld;dev" >> "feeds.conf.default"
-#echo 'src-git passwall https://github.com/xiaorouji/openwrt-passwall' >>feeds.conf.default
-#echo "src-git passwall_packages https://github.com/xiaorouji/openwrt-passwall-packages.git;main" >> "feeds.conf.default"
-#echo "src-git passwall2 https://github.com/xiaorouji/openwrt-passwall2.git;main" >> "feeds.conf.default"
 echo 'src-git istore https://github.com/linkease/istore;main' >> feeds.conf.default
 echo "src-git daed https://github.com/QiuSimons/luci-app-daed" >> "feeds.conf.default"
 
-# Temp
-#rm -rf ./target/linux/generic/hack-6.12/220-arm-gc_sections.patch
-# Switch to the specific commit (4bb635d) for mbedtls directory
-#rm -rf ./package/libs/mbedtls/patches/100-fix-gcc14-build.patch
-#git checkout 4bb635d -- package/libs/mbedtls
+#daed
 curl -L https://raw.githubusercontent.com/immortalwrt/immortalwrt/master/tools/llvm-bpf/Makefile -o tools/llvm-bpf/Makefile
 curl -L https://raw.githubusercontent.com/immortalwrt/immortalwrt/refs/heads/master/include/bpf.mk -o include/bpf.mk
-# 删除原来的 bpf-headers
+#修改daed编译内核
 cp ./include/kernel-6.18 ./target/linux/x86/generic
 cp ./include/kernel-6.18 ./target/linux/generic
 rm -rf package/kernel/bpf-headers
