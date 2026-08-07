@@ -21,7 +21,7 @@ env:
   DIY_P2_SH: diy_script/diy-part2.sh
   DIY_DOCKER_SH: diy_script/diy-docker.sh
   COMMIT_LOG_NUM: 1
-  RELEASE_TAG: 25.12-X86
+  RELEASE_TAG: 25.12-daed-X86
   UPLOAD_BIN_DIR: false
   UPLOAD_FIRMWARE: true
   UPLOAD_COWTRANSFER: false
@@ -191,7 +191,7 @@ jobs:
         rm -rf packages
         rm -rf profiles.json feeds.buildinfo config.buildinfo *openwrt-x86-64-generic-kernel.bin *openwrt-x86-64-generic-squashfs-rootfs.img.gz *openwrt-x86-64-generic.manifest sha256sums version.buildinfo
         for file in *-openwrt-x86-64-generic-squashfs-combined-efi.img.gz; do
-            mv "$file" "25.12-$file"
+            mv "$file" "25.12-daed-$file"
         done
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
