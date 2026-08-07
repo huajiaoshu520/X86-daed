@@ -55,11 +55,11 @@ sed -i 's/6.12/6.18/g'  ./target/linux/x86/Makefile
 #sed -i '1,$d' ./feeds/packages/net/ddns-scripts/files/usr/lib/ddns/update_cloudflare_com_v4.sh && cat <(curl -s https://raw.githubusercontent.com/Jason6111/Openwrt_Beta/refs/heads/main/patch/update_cloudflare_com_v4.sh) >> ./feeds/packages/net/ddns-scripts/files/usr/lib/ddns/update_cloudflare_com_v4.sh
 
 #lucky
-#sed -i 's|/etc/lucky|/etc/config/lucky2|g' ./feeds/luci/applications/luci-app-lucky/root/etc/config/lucky
+sed -i 's|/etc/lucky|/etc/config/lucky2|g' ./feeds/luci/applications/luci-app-lucky/root/etc/config/lucky
 #sed -i 's/PKG_RELEASE:=8/PKG_RELEASE:=1/g' ./feeds/luci/applications/luci-app-lucky/Makefile
 #sed -i 's/PKG_VERSION:=1.2.0/PKG_VERSION:=2.2.2/g' ./feeds/luci/applications/luci-app-lucky/Makefile
 #sed -i 's/PKG_RELEASE:=1/PKG_RELEASE:=12/g' ./feeds/packages/net/lucky/Makefile
-#sed -i 's/PKG_VERSION:=2.17.8/PKG_VERSION:=2.27.2/g' ./feeds/packages/net/lucky/Makefile
+sed -i 's/PKG_VERSION:=2.17.8/PKG_VERSION:=2.27.2/g' ./feeds/packages/net/lucky/Makefile
 #sed -i 's/^LUCI_DEPENDS:=+lucky/LUCI_DEPENDS:=+lucky +luci-compat/' ./feeds/luci/applications/luci-app-lucky/Makefile
 
 #禁用固件更新后跑分
@@ -80,6 +80,6 @@ sed -i '/^\[ -n "\$\${IPKG_INSTROOT}" \] \|\| echo "0 4 \* \* \* \/etc\/coremark
 
 #tmep
 #sed -i 's/e251189ed315f22ab63dc6f17b03178676e10c21fff0cdd863b294a3c51a1b5b/c48331dcfda73d16cb12a0aa069eb62a5c370428c7559011a7284a9ef67d3089/g' ./package/libs/ustream-ssl/Makefile
-#sed -i '/containerd.installer/{s/^/# /}' ./feeds/packages/utils/dockerd/Makefile
-#sed -i '/runc.installer/{s/^/# /}' ./feeds/packages/utils/dockerd/Makefile
+sed -i '/containerd.installer/{s/^/# /}' ./feeds/packages/utils/dockerd/Makefile
+sed -i '/runc.installer/{s/^/# /}' ./feeds/packages/utils/dockerd/Makefile
 cp ./feeds/helloworld/xray-core/Makefile ./feeds/packages/net/xray-core/Makefile
