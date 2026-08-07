@@ -3,7 +3,7 @@ name: 更新_检查器 #Update_Checker
 env:
 
   # huajiaoshu520X86-daed源码
-  REPO_URL_huajiaoshu520X86daed: https://github.com/huajiaoshu520/X86_daed
+  REPO_URL_huajiaoshu520X86daed: https://github.com/huajiaoshu520/X86-daed
   REPO_BRANCH_huajiaoshu520X86daed: main
   REPO_PATH_huajiaoshu520X86daed: "huajiaoshu520X86daed"
 
@@ -34,7 +34,7 @@ env:
   
    # daed源码
   REPO_URL_daed: https://github.com/QiuSimons/luci-app-daed
-  REPO_BRANCH_daed: main
+  REPO_BRANCH_daed: kix
   REPO_PATH_daed : "daed"  
 
 on:
