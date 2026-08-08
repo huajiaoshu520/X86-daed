@@ -19,7 +19,6 @@ sed -i 's/IMG_PREFIX:=/IMG_PREFIX:=$(LINUX_VERSION)-/g' include/image.mk
 #sed -i 's/23\.05/25.12/g' feeds.conf.default
 #echo "src-git helloworld https://github.com/Jason6111/helloworld;dev" >> "feeds.conf.default"
 echo "src-git helloworld https://github.com/fw876/helloworld;dev" >> "feeds.conf.default"
-echo 'src-git istore https://github.com/linkease/istore;main' >> feeds.conf.default
 echo "src-git daed https://github.com/QiuSimons/luci-app-daed" >> "feeds.conf.default"
 
 #daed
