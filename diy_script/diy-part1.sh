@@ -21,7 +21,6 @@ sed -i 's/IMG_PREFIX:=/IMG_PREFIX:=$(LINUX_VERSION)-/g' include/image.mk
 echo "src-git helloworld https://github.com/fw876/helloworld;dev" >> "feeds.conf.default"
 echo 'src-git istore https://github.com/linkease/istore;main' >> feeds.conf.default
 echo "src-git daed https://github.com/QiuSimons/luci-app-daed" >> "feeds.conf.default"
-echo "src-git quickstart https://github.com/cakeuui0414/luci-app-quickstart" >> "feeds.conf.default"
 
 #daed
 curl -L https://raw.githubusercontent.com/immortalwrt/immortalwrt/master/tools/llvm-bpf/Makefile -o tools/llvm-bpf/Makefile
