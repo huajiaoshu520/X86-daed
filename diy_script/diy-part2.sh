@@ -49,5 +49,15 @@ sed -i '/^\[ -n "\$\${IPKG_INSTROOT}" \] \|\| echo "0 4 \* \* \* \/etc\/coremark
 sed -i '/containerd.installer/{s/^/# /}' ./feeds/packages/utils/dockerd/Makefile
 sed -i '/runc.installer/{s/^/# /}' ./feeds/packages/utils/dockerd/Makefile
 
+# iStore 中文翻译
+echo "===== iStore translation ====="
+
+if [ -f ./feeds/istore/translations/zh-cn/app.po ]; then
+    echo "Found iStore zh-cn translation"
+    mkdir -p ./feeds/istore/luci/luci-app-store/po/zh-cn
+    cp ./feeds/istore/translations/zh-cn/app.po \
+       ./feeds/istore/luci/luci-app-store/po/zh-cn/app.po
+fi
+
 #同步lede-xray
 cp ./feeds/helloworld/xray-core/Makefile ./feeds/packages/net/xray-core/Makefile
