@@ -56,7 +56,7 @@ if [ -f ./feeds/istore/translations/zh-cn/app.po ]; then
     echo "Found iStore zh-cn translation"
     mkdir -p ./feeds/istore/luci/luci-app-store/po/zh-cn
     cp ./feeds/istore/translations/zh-cn/app.po \
-       ./feeds/istore/luci/luci-app-store/po/zh-cn/app.po
+       ./feeds/istore/luci/luci-app-store/po/zh-cn/store.po
 fi
 
 #同步lede-xray
