@@ -227,9 +227,6 @@ jobs:
         echo "</details> <details> <summary> SSRP Commit Top $COMMIT_LOG_NUM </summary>" >> release.txt
         git -C openwrt/feeds/helloworld log -n $COMMIT_LOG_NUM >> release.txt
 
-        echo "</details> <details> <summary> istore Commit Top $COMMIT_LOG_NUM </summary>" >> release.txt
-        git -C openwrt/feeds/istore log -n $COMMIT_LOG_NUM >> release.txt
-
         echo "</details> <details> <summary> daed Commit Top $COMMIT_LOG_NUM </summary>" >> release.txt
         git -C openwrt/feeds/daed log -n $COMMIT_LOG_NUM >> release.txt        
 
