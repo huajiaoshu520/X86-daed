@@ -1,0 +1,321 @@
+name: Kernel Compatibility Check
+
+on:
+  workflow_dispatch:
+
+  repository_dispatch:
+    types:
+      - OpenWrt相关代码更新
+
+permissions:
+  contents: read
+
+env:
+  REPO_URL: https://github.com/coolsnowwolf/lede
+  REPO_BRANCH: master
+
+jobs:
+  kernel-check:
+    runs-on: ubuntu-24.04
+
+    steps:
+
+      # ==========================================
+      # 1. 安装依赖
+      # ==========================================
+
+      - name: 安装编译依赖
+        run: |
+          sudo apt-get update
+
+          sudo apt-get install -y \
+            build-essential \
+            clang \
+            flex \
+            bison \
+            gawk \
+            gettext \
+            git \
+            libncurses-dev \
+            libssl-dev \
+            python3 \
+            rsync \
+            unzip \
+            wget \
+            quilt \
+            zstd \
+            file \
+            curl \
+            bc \
+            cpio \
+            kmod \
+            libelf-dev \
+            patch
+
+      # ==========================================
+      # 2. Clone LEDE
+      # ==========================================
+
+      - name: 下载 LEDE
+        run: |
+          git clone \
+            --depth=1 \
+            --branch "$REPO_BRANCH" \
+            "$REPO_URL" \
+            lede
+
+      # ==========================================
+      # 3. 显示当前 kernel
+      # ==========================================
+
+      - name: 获取当前 Kernel
+        id: current
+        working-directory: lede
+        shell: bash
+        run: |
+
+          CUR=$(
+            grep '^LINUX_KERNEL_HASH-6\.18\.' \
+              include/kernel-6.18 \
+              | sed -n \
+                's/^LINUX_KERNEL_HASH-\(6\.18\.[0-9]\+\).*/\1/p' \
+              | head -1
+          )
+
+          if [ -z "$CUR" ]; then
+            echo "无法找到当前 Linux 6.18 版本"
+            cat include/kernel-6.18
+            exit 1
+          fi
+
+          echo "当前 Kernel: $CUR"
+
+          echo "current=$CUR" >> "$GITHUB_OUTPUT"
+
+      # ==========================================
+      # 4. 获取 kernel.org 最新 6.18.x
+      # ==========================================
+
+      - name: 获取最新 Linux 6.18
+        id: latest
+        shell: bash
+        run: |
+
+          PAGE=$(curl -fsSL \
+            https://www.kernel.org/pub/linux/kernel/v6.x/)
+
+          LATEST=$(
+            echo "$PAGE" |
+            grep -oE 'linux-6\.18\.[0-9]+\.tar\.xz' |
+            sed 's/linux-//' |
+            sed 's/\.tar\.xz//' |
+            sort -V |
+            tail -1
+          )
+
+          if [ -z "$LATEST" ]; then
+            echo "无法找到最新 Linux 6.18"
+            exit 1
+          fi
+
+          echo "最新 Kernel: $LATEST"
+
+          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+
+      # ==========================================
+      # 5. 判断是否需要升级
+      # ==========================================
+
+      - name: 判断 Kernel 更新
+        id: compare
+        run: |
+
+          CURRENT="${{ steps.current.outputs.current }}"
+          LATEST="${{ steps.latest.outputs.latest }}"
+
+          echo "当前: $CURRENT"
+          echo "最新: $LATEST"
+
+          CURRENT_NUM="${CURRENT##*.}"
+          LATEST_NUM="${LATEST##*.}"
+
+          if [ "$LATEST_NUM" -le "$CURRENT_NUM" ]; then
+            echo "无需更新"
+
+            echo "update=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "发现新 Kernel"
+
+            echo "update=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ==========================================
+      # 6. 下载 kernel
+      # ==========================================
+
+      - name: 下载 Linux Kernel
+        if: steps.compare.outputs.update == 'true'
+        run: |
+
+          VERSION="${{ steps.latest.outputs.latest }}"
+
+          wget \
+            "https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-${VERSION}.tar.xz"
+
+      # ==========================================
+      # 7. SHA256
+      # ==========================================
+
+      - name: 计算 SHA256
+        if: steps.compare.outputs.update == 'true'
+        id: hash
+        run: |
+
+          VERSION="${{ steps.latest.outputs.latest }}"
+
+          HASH=$(
+            sha256sum \
+              "linux-${VERSION}.tar.xz" |
+              awk '{print $1}'
+          )
+
+          echo "SHA256:"
+          echo "$HASH"
+
+          echo "hash=$HASH" >> "$GITHUB_OUTPUT"
+
+      # ==========================================
+      # 8. 修改 kernel-6.18
+      # ==========================================
+
+      - name: 更新 Kernel Hash
+        if: steps.compare.outputs.update == 'true'
+        working-directory: lede
+        run: |
+
+          CURRENT="${{ steps.current.outputs.current }}"
+          NEW="${{ steps.latest.outputs.latest }}"
+          HASH="${{ steps.hash.outputs.hash }}"
+
+          cp include/kernel-6.18 \
+             include/kernel-6.18.backup
+
+          python3 <<PY
+
+          from pathlib import Path
+          import re
+
+          path = Path("include/kernel-6.18")
+
+          text = path.read_text()
+
+          current = "$CURRENT"
+          new = "$NEW"
+          sha256 = "$HASH"
+
+          # 更新 LINUX_VERSION
+          text = re.sub(
+              r'^LINUX_VERSION-6\.18\s*=\s*\.[0-9]+$',
+              '.' + new.split('.')[-1],
+              text,
+              flags=re.MULTILINE
+          )
+
+          # 更新 HASH
+          pattern = (
+              r'^LINUX_KERNEL_HASH-'
+              + re.escape(current)
+              + r'\s*=.*$'
+          )
+
+          replacement = (
+              f'LINUX_KERNEL_HASH-{new} = {sha256}'
+          )
+
+          text, count = re.subn(
+              pattern,
+              replacement,
+              text,
+              flags=re.MULTILINE
+          )
+
+          if count != 1:
+              raise SystemExit(
+                  f"Kernel hash replacement failed: {count}"
+              )
+
+          path.write_text(text)
+
+          PY
+
+          echo "更新后的 kernel-6.18:"
+          cat include/kernel-6.18
+
+      # ==========================================
+      # 9. 非交互 x86_64 配置
+      # ==========================================
+
+      - name: 创建 x86_64 配置
+        if: steps.compare.outputs.update == 'true'
+        working-directory: lede
+        run: |
+
+          export TERM=xterm
+
+          cat > .config <<'EOF'
+          CONFIG_TARGET_x86=y
+          CONFIG_TARGET_x86_64=y
+          CONFIG_TARGET_x86_64_DEVICE_generic=y
+          EOF
+
+          make defconfig
+
+      # ==========================================
+      # 10. 真正测试 Kernel patch
+      # ==========================================
+
+      - name: 测试 Kernel Patch
+        if: steps.compare.outputs.update == 'true'
+        working-directory: lede
+        shell: bash
+        run: |
+
+          set -o pipefail
+
+          export TERM=xterm
+
+          echo "======================================"
+          echo "开始测试 Linux Kernel Patch"
+          echo "======================================"
+
+          make target/linux/prepare V=s \
+            2>&1 | tee kernel_prepare.log
+
+      # ==========================================
+      # 11. 上传失败日志
+      # ==========================================
+
+      - name: 上传 Kernel 失败日志
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-patch-failure
+          path: |
+            lede/kernel_prepare.log
+            lede/build_dir/**/linux-6.18*/**/*.rej
+          if-no-files-found: ignore
+
+      # ==========================================
+      # 12. Kernel 测试成功
+      # ==========================================
+
+      - name: Kernel 测试成功
+        if: success()
+        run: |
+
+          echo "======================================"
+          echo "Kernel Patch TEST PASSED"
+          echo "======================================"
+
+          echo "Current: ${{ steps.current.outputs.current }}"
+          echo "Latest : ${{ steps.latest.outputs.latest }}"
