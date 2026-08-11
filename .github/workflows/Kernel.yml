@@ -1,11 +1,10 @@
+```yaml
 name: LEDE Linux 6.18 Kernel Checker
 
 on:
   workflow_dispatch:
 
   schedule:
-    # 每天 UTC 00:00
-    # 北京时间 08:00
     - cron: "0 0 * * *"
 
 permissions:
@@ -18,8 +17,7 @@ env:
 jobs:
 
   # ============================================================
-  # Job 1
-  # 自动检测 / 测试 Linux 6.18
+  # Linux 6.18 Kernel Checker
   # ============================================================
 
   kernel-check:
@@ -88,19 +86,20 @@ jobs:
             lede
 
       # ==========================================================
-      # 3. 显示版本
+      # 3. 显示 LEDE 信息
       # ==========================================================
 
-      - name: Show LEDE version
+      - name: Show LEDE information
         working-directory: lede
         shell: bash
         run: |
           set -e
 
           echo "=========================================="
-          echo "LEDE"
+          echo "LEDE information"
           echo "=========================================="
 
+          echo
           echo "Repository:"
           echo "$LEDE_REPO"
 
@@ -113,10 +112,11 @@ jobs:
           git rev-parse HEAD
 
           echo
+          echo "Commit message:"
           git log -1 --oneline
 
       # ==========================================================
-      # 4. 检查 x86 配置
+      # 4. 检查 x86 Makefile
       # ==========================================================
 
       - name: Check x86 kernel configuration
@@ -138,7 +138,7 @@ jobs:
 
           grep -E \
             'KERNEL_PATCHVER|KERNEL_TESTING_PATCHVER' \
-            "$FILE"
+            "$FILE" || true
 
       # ==========================================================
       # 5. 找到 kernel-6.18
@@ -153,11 +153,10 @@ jobs:
           FILE="include/kernel-6.18"
 
           if [ ! -f "$FILE" ]; then
-            echo "ERROR: kernel-6.18 not found"
+            echo "ERROR: $FILE not found"
 
             echo
-            echo "Available kernel files:"
-
+            echo "Repository tree:"
             find include \
               -maxdepth 1 \
               -type f \
@@ -172,7 +171,7 @@ jobs:
           echo "$FILE"
 
       # ==========================================================
-      # 6. 当前 Linux 6.18
+      # 6. 检测当前 Linux 6.18 版本
       # ==========================================================
 
       - name: Detect current Linux 6.18
@@ -200,7 +199,7 @@ jobs:
           fi
 
           echo
-          echo "Current Linux:"
+          echo "Current Linux 6.18:"
           echo "$CURRENT"
 
           case "$CURRENT" in
@@ -215,7 +214,7 @@ jobs:
           echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
 
       # ==========================================================
-      # 7. 获取 kernel.org 最新 6.18
+      # 7. 获取 kernel.org 最新 6.18.x
       # ==========================================================
 
       - name: Get latest Linux 6.18
@@ -223,6 +222,10 @@ jobs:
         shell: bash
         run: |
           set -e
+
+          echo "=========================================="
+          echo "Checking kernel.org"
+          echo "=========================================="
 
           PAGE=$(
             curl \
@@ -248,10 +251,9 @@ jobs:
             exit 1
           fi
 
-          echo "=========================================="
+          echo
           echo "Latest Linux 6.18:"
           echo "$LATEST"
-          echo "=========================================="
 
           echo "new_version=$LATEST" >> "$GITHUB_OUTPUT"
 
@@ -259,7 +261,7 @@ jobs:
       # 8. 比较版本
       # ==========================================================
 
-      - name: Compare versions
+      - name: Compare Linux versions
         id: compare
         shell: bash
         run: |
@@ -273,21 +275,21 @@ jobs:
 
           if [ "$CURRENT" = "$LATEST" ]; then
             echo
-            echo "Already up to date."
+            echo "Linux 6.18 is already up to date."
 
             echo "update=false" >> "$GITHUB_OUTPUT"
           else
             echo
-            echo "Kernel update detected."
+            echo "Linux 6.18 update detected."
 
             echo "update=true" >> "$GITHUB_OUTPUT"
           fi
 
       # ==========================================================
-      # 9. 下载最新 kernel
+      # 9. 下载最新 Linux
       # ==========================================================
 
-      - name: Download Linux kernel
+      - name: Download Linux 6.18
         if: steps.compare.outputs.update == 'true'
         shell: bash
         run: |
@@ -310,7 +312,7 @@ jobs:
           test -f "lede/dl/linux-${VERSION}.tar.xz"
 
       # ==========================================================
-      # 10. SHA256
+      # 10. 计算 SHA256
       # ==========================================================
 
       - name: Calculate SHA256
@@ -329,7 +331,7 @@ jobs:
           )
 
           echo "=========================================="
-          echo "Kernel:"
+          echo "Linux:"
           echo "$VERSION"
           echo
           echo "SHA256:"
@@ -339,7 +341,7 @@ jobs:
           echo "hash=$HASH" >> "$GITHUB_OUTPUT"
 
       # ==========================================================
-      # 11. 更新 kernel-6.18
+      # 11. 更新 include/kernel-6.18
       # ==========================================================
 
       - name: Update kernel-6.18
@@ -354,6 +356,18 @@ jobs:
           CURRENT="${{ steps.current.outputs.current }}"
           NEW="${{ steps.kernel.outputs.new_version }}"
           HASH="${{ steps.hash.outputs.hash }}"
+
+          echo "=========================================="
+          echo "Updating kernel-6.18"
+          echo "=========================================="
+
+          echo
+          echo "Old:"
+          echo "$CURRENT"
+
+          echo
+          echo "New:"
+          echo "$NEW"
 
           cp "$FILE" "${FILE}.backup"
 
@@ -370,19 +384,22 @@ jobs:
           new = "$NEW"
           sha256 = "$HASH"
 
-          m = re.fullmatch(
+          match = re.fullmatch(
               r"6\.18\.(\d+)",
               new
           )
 
-          if not m:
+          if not match:
               raise SystemExit(
-                  f"Invalid kernel version: {new}"
+                  f"Invalid Linux 6.18 version: {new}"
               )
 
-          patch_version = m.group(1)
+          patch_version = match.group(1)
 
-          # 更新版本
+          # ----------------------------------------------------
+          # 更新 LINUX_VERSION-6.18
+          # ----------------------------------------------------
+
           text, count = re.subn(
               r"^LINUX_VERSION-6\.18\s*=.*$",
               f"LINUX_VERSION-6.18 = .{patch_version}",
@@ -392,10 +409,13 @@ jobs:
 
           if count != 1:
               raise SystemExit(
-                  "Cannot update LINUX_VERSION-6.18"
+                  "Failed to update LINUX_VERSION-6.18"
               )
 
+          # ----------------------------------------------------
           # 删除旧 hash
+          # ----------------------------------------------------
+
           text = re.sub(
               r"^LINUX_KERNEL_HASH-"
               + re.escape(current)
@@ -405,7 +425,10 @@ jobs:
               flags=re.MULTILINE
           )
 
-          # 删除可能已经存在的新 hash
+          # ----------------------------------------------------
+          # 删除可能存在的新 hash
+          # ----------------------------------------------------
+
           text = re.sub(
               r"^LINUX_KERNEL_HASH-"
               + re.escape(new)
@@ -414,6 +437,10 @@ jobs:
               text,
               flags=re.MULTILINE
           )
+
+          # ----------------------------------------------------
+          # 添加新 hash
+          # ----------------------------------------------------
 
           if not text.endswith("\n"):
               text += "\n"
@@ -446,12 +473,12 @@ jobs:
           FILE="target/linux/x86/Makefile"
 
           echo "=========================================="
-          echo "x86 BEFORE"
+          echo "x86 Makefile BEFORE"
           echo "=========================================="
 
           grep -E \
             'KERNEL_PATCHVER|KERNEL_TESTING_PATCHVER' \
-            "$FILE"
+            "$FILE" || true
 
           echo
           echo "Force KERNEL_PATCHVER=6.18"
@@ -462,7 +489,7 @@ jobs:
 
           echo
           echo "=========================================="
-          echo "x86 AFTER"
+          echo "x86 Makefile AFTER"
           echo "=========================================="
 
           grep -E \
@@ -473,9 +500,13 @@ jobs:
             '^KERNEL_PATCHVER:=6\.18$' \
             "$FILE"; then
 
+            echo
             echo "ERROR: Failed to force Linux 6.18"
             exit 1
           fi
+
+          echo
+          echo "OK: x86 Kernel = 6.18"
 
       # ==========================================================
       # 13. 配置 x86_64
@@ -489,6 +520,10 @@ jobs:
 
           export TERM=xterm
 
+          echo "=========================================="
+          echo "Configure x86_64"
+          echo "=========================================="
+
           cat > .config <<'EOF'
           CONFIG_TARGET_x86=y
           CONFIG_TARGET_x86_64=y
@@ -498,7 +533,7 @@ jobs:
           make defconfig
 
       # ==========================================================
-      # 14. 确认最终版本
+      # 14. 最终确认版本
       # ==========================================================
 
       - name: Verify Linux 6.18 configuration
@@ -512,32 +547,49 @@ jobs:
           echo "=========================================="
 
           echo
-          echo "x86 Makefile:"
+          echo "===== x86 Makefile ====="
+
           grep -E \
             'KERNEL_PATCHVER|KERNEL_TESTING_PATCHVER' \
             target/linux/x86/Makefile
 
           echo
-          echo "kernel-6.18:"
+          echo "===== kernel-6.18 ====="
+
           cat include/kernel-6.18
 
           echo
-          echo ".config:"
+          echo "===== .config ====="
+
           grep -E \
             'CONFIG_TARGET_x86|CONFIG_KERNEL|TESTING' \
             .config || true
 
           echo
+          echo "===== target Makefile ====="
+
+          grep -R \
+            'KERNEL_PATCHVER' \
+            target/linux/x86 \
+            include \
+            -n || true
+
+          echo
           echo "=========================================="
 
-          grep -q \
+          if ! grep -q \
             '^KERNEL_PATCHVER:=6\.18$' \
-            target/linux/x86/Makefile
+            target/linux/x86/Makefile; then
 
-          echo "OK: x86 Kernel = 6.18"
+            echo "ERROR: x86 is NOT using Linux 6.18"
+            exit 1
+          fi
+
+          echo
+          echo "OK: x86 is using Linux 6.18."
 
       # ==========================================================
-      # 15. 正常测试全部 patch
+      # 15. 第一次测试：全部 patch
       # ==========================================================
 
       - name: Test all Linux 6.18 patches
@@ -549,9 +601,16 @@ jobs:
 
           export TERM=xterm
 
-          echo "=========================================="
-          echo "开始测试全部 Linux 6.18 Patch"
-          echo "=========================================="
+          echo "======================================"
+          echo "开始测试全部 Linux Kernel Patch"
+          echo "======================================"
+
+          echo
+          echo "Kernel:"
+          echo "${{ steps.kernel.outputs.new_version }}"
+
+          echo
+          echo "======================================"
 
           make target/linux/prepare V=s \
             2>&1 |
@@ -563,26 +622,40 @@ jobs:
           echo "make exit code: $STATUS"
 
           if [ "$STATUS" -eq 0 ]; then
+
+            echo
+            echo "======================================"
+            echo "ALL PATCHES PASSED"
+            echo "======================================"
+
             echo "ALL_PATCH_OK=true" >> "$GITHUB_ENV"
+
             exit 0
           fi
 
+          echo
           echo "ALL_PATCH_OK=false" >> "$GITHUB_ENV"
 
           echo
-          echo "=========================================="
-          echo "全部 Patch 测试失败"
-          echo "开始判断是否为 PPP 625"
-          echo "=========================================="
+          echo "======================================"
+          echo "Kernel patch test failed."
+          echo "======================================"
+
+          # ------------------------------------------------------
+          # 判断是不是 PPP 625
+          # ------------------------------------------------------
 
           if grep -q \
             '625-v7.0-ppp-enable-TX-scatter-gather.patch' \
             kernel_prepare_all.log; then
 
+            echo
+            echo "Detected PPP 625 patch failure."
+
             echo "PPP_625_FAILED=true" >> "$GITHUB_ENV"
 
-            echo
-            echo "Detected PPP 625 failure."
+            # 这里故意不 exit 1
+            # 后面继续做隔离测试
 
             exit 0
           fi
@@ -590,13 +663,42 @@ jobs:
           echo
           echo "ERROR: Failure is NOT PPP 625."
 
+          echo "OTHER_PATCH_FAILED=true" >> "$GITHUB_ENV"
+
           exit "$STATUS"
 
       # ==========================================================
-      # 16. 单独测试 PPP 625
+      # 16. 上传第一次测试日志
+      # ==========================================================
+
+      - name: Upload first kernel test
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-6.18-${{ steps.kernel.outputs.new_version }}-first-test
+          path: |
+            lede/kernel_prepare_all.log
+            lede/include/kernel-6.18
+            lede/include/kernel-6.18.backup
+            lede/target/linux/x86/Makefile
+            lede/build_dir/**/*.rej
+          if-no-files-found: warn
+
+      # ==========================================================
+      # 17. 把 625 移出 patch 扫描目录
       #
-      # 如果全部测试因为 625 失败，
-      # 我们暂时禁用 625，再测试其他 patch。
+      # 重要：
+      #
+      # 不能改成：
+      #
+      # 625.patch.disabled
+      #
+      # 因为 LEDE 的 patch 扫描器仍可能匹配 *.patch*
+      #
+      # 所以直接移到：
+      #
+      # target/linux/generic/
+      #
       # ==========================================================
 
       - name: Disable PPP 625 for isolation test
@@ -608,26 +710,79 @@ jobs:
 
           PATCH="target/linux/generic/backport-6.18/625-v7.0-ppp-enable-TX-scatter-gather.patch"
 
-          if [ ! -f "$PATCH" ]; then
-            echo "ERROR: PPP patch not found:"
-            echo "$PATCH"
-            exit 1
-          fi
+          BACKUP="target/linux/generic/625-v7.0-ppp-enable-TX-scatter-gather.patch.disabled"
 
           echo "=========================================="
           echo "Disable PPP 625"
           echo "=========================================="
 
+          if [ ! -f "$PATCH" ]; then
+            echo
+            echo "ERROR: PPP 625 patch not found:"
+            echo "$PATCH"
+            exit 1
+          fi
+
+          # 确保旧备份不存在
+          rm -f "$BACKUP"
+
+          # ----------------------------------------------------
+          # 移出 backport-6.18
+          # ----------------------------------------------------
+
           mv \
             "$PATCH" \
-            "${PATCH}.disabled"
+            "$BACKUP"
 
           echo
-          echo "Disabled:"
-          echo "${PATCH}.disabled"
+          echo "Original:"
+          echo "$PATCH"
+
+          echo
+          echo "Moved to:"
+          echo "$BACKUP"
+
+          # ----------------------------------------------------
+          # 确认 backport-6.18 已经没有 625
+          # ----------------------------------------------------
+
+          echo
+          echo "Checking backport directory..."
+
+          if find \
+            target/linux/generic/backport-6.18 \
+            -maxdepth 1 \
+            -type f \
+            -name '*625*' |
+            grep -q .; then
+
+            echo
+            echo "ERROR: 625 still exists in backport-6.18"
+
+            find \
+              target/linux/generic/backport-6.18 \
+              -maxdepth 1 \
+              -type f \
+              -name '*625*'
+
+            exit 1
+          fi
+
+          echo
+          echo "OK: 625 is outside backport-6.18."
+
+          echo
+          echo "Remaining patch:"
+          find \
+            target/linux/generic/backport-6.18 \
+            -maxdepth 1 \
+            -type f \
+            -name '*.patch' |
+            sort -V |
+            tail -20
 
       # ==========================================================
-      # 17. 清理 kernel build directory
+      # 18. 清理 Linux build directory
       # ==========================================================
 
       - name: Clean kernel build directory
@@ -637,13 +792,23 @@ jobs:
         run: |
           set -e
 
+          echo "=========================================="
+          echo "Clean Linux kernel build directory"
+          echo "=========================================="
+
           rm -rf \
             build_dir/target-x86_64_musl/linux-x86_64
 
-          echo "Kernel build directory cleaned."
+          echo
+          echo "Build directory cleaned."
 
       # ==========================================================
-      # 18. 测试除 625 之外的所有 patch
+      # 19. 第二次测试
+      #
+      # 这里应该完全看不到：
+      #
+      # 625-v7.0-ppp-enable-TX-scatter-gather.patch
+      #
       # ==========================================================
 
       - name: Test Linux 6.18 without PPP 625
@@ -656,10 +821,36 @@ jobs:
 
           export TERM=xterm
 
-          echo "=========================================="
-          echo "测试 Linux 6.18"
-          echo "排除 PPP 625"
-          echo "=========================================="
+          echo "======================================"
+          echo "第二次测试 Linux 6.18"
+          echo "======================================"
+
+          echo
+          echo "PPP 625 has been removed from:"
+          echo "target/linux/generic/backport-6.18"
+
+          echo
+          echo "Checking for 625..."
+
+          if find \
+            target/linux/generic/backport-6.18 \
+            -maxdepth 1 \
+            -type f \
+            -name '*625*' |
+            grep -q .; then
+
+            echo
+            echo "ERROR: 625 still exists!"
+            exit 1
+          fi
+
+          echo
+          echo "OK: 625 is not present."
+
+          echo
+          echo "======================================"
+          echo "Applying remaining Linux 6.18 patches"
+          echo "======================================"
 
           make target/linux/prepare V=s \
             2>&1 |
@@ -668,24 +859,73 @@ jobs:
           STATUS=${PIPESTATUS[0]}
 
           echo
-          echo "Exit code: $STATUS"
+          echo "make exit code: $STATUS"
 
           if [ "$STATUS" -eq 0 ]; then
+
+            echo
+            echo "======================================"
+            echo "ALL OTHER PATCHES PASSED"
+            echo "======================================"
+
             echo "PPP_625_ONLY=true" >> "$GITHUB_ENV"
+
             exit 0
           fi
 
-          echo "PPP_625_ONLY=false" >> "$GITHUB_ENV"
-
           echo
-          echo "=========================================="
-          echo "除 625 外还有其他 Patch 失败"
-          echo "=========================================="
+          echo "======================================"
+          echo "OTHER PATCHES ALSO FAILED"
+          echo "======================================"
+
+          echo "PPP_625_ONLY=false" >> "$GITHUB_ENV"
 
           exit "$STATUS"
 
       # ==========================================================
-      # 19. PPP 测试结果
+      # 20. 检查第二次测试是否真的没有 625
+      # ==========================================================
+
+      - name: Verify PPP 625 isolation
+        if: env.PPP_625_FAILED == 'true'
+        working-directory: lede
+        shell: bash
+        run: |
+          set -e
+
+          echo "=========================================="
+          echo "Verify PPP 625 isolation"
+          echo "=========================================="
+
+          echo
+          echo "Searching logs for 625..."
+
+          if [ -f kernel_prepare_without_625.log ]; then
+
+            if grep -q \
+              '625-v7.0-ppp-enable-TX-scatter-gather.patch' \
+              kernel_prepare_without_625.log; then
+
+              echo
+              echo "ERROR:"
+              echo "625 still appeared in second test!"
+
+              grep \
+                -n \
+                '625-v7.0-ppp-enable-TX-scatter-gather.patch' \
+                kernel_prepare_without_625.log
+
+              exit 1
+            fi
+
+          fi
+
+          echo
+          echo "OK:"
+          echo "Second test did not apply PPP 625."
+
+      # ==========================================================
+      # 21. PPP 测试结果
       # ==========================================================
 
       - name: PPP result
@@ -694,28 +934,35 @@ jobs:
         shell: bash
         run: |
           if [ "${PPP_625_ONLY:-false}" = "true" ]; then
+
             echo "ppp_ok=false" >> "$GITHUB_OUTPUT"
 
             echo
             echo "=========================================="
             echo "RESULT"
             echo "=========================================="
+
             echo "Linux 6.18 other patches: PASS"
             echo "PPP 625: FAIL"
-            echo "=========================================="
+
+            echo
+            echo "Only PPP 625 is incompatible."
 
           elif [ "${ALL_PATCH_OK:-false}" = "true" ]; then
+
             echo "ppp_ok=true" >> "$GITHUB_OUTPUT"
 
           else
+
             echo "ppp_ok=false" >> "$GITHUB_OUTPUT"
+
           fi
 
       # ==========================================================
-      # 20. 上传失败文件
+      # 22. 上传完整调试文件
       # ==========================================================
 
-      - name: Upload kernel test logs
+      - name: Upload kernel debug files
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -729,8 +976,9 @@ jobs:
 
             lede/target/linux/x86/Makefile
 
+            lede/target/linux/generic/625-v7.0-ppp-enable-TX-scatter-gather.patch.disabled
+
             lede/target/linux/generic/backport-6.18/625-v7.0-ppp-enable-TX-scatter-gather.patch
-            lede/target/linux/generic/backport-6.18/625-v7.0-ppp-enable-TX-scatter-gather.patch.disabled
 
             lede/build_dir/**/*.rej
 
@@ -741,7 +989,7 @@ jobs:
           if-no-files-found: warn
 
       # ==========================================================
-      # 21. 最终结果
+      # 23. 最终结果
       # ==========================================================
 
       - name: Final result
@@ -764,11 +1012,16 @@ jobs:
 
           echo
 
+          # ------------------------------------------------------
+          # 全部通过
+          # ------------------------------------------------------
+
           if [ "${ALL_PATCH_OK:-false}" = "true" ]; then
 
             echo "=========================================="
             echo "PASS"
             echo "=========================================="
+
             echo
             echo "All Linux 6.18 patches passed."
 
@@ -776,34 +1029,46 @@ jobs:
 
             exit 0
 
-          elif [ "${PPP_625_ONLY:-false}" = "true" ]; then
+          fi
+
+          # ------------------------------------------------------
+          # 只有 PPP 625 失败
+          # ------------------------------------------------------
+
+          if [ "${PPP_625_ONLY:-false}" = "true" ]; then
 
             echo "=========================================="
             echo "PARTIAL PASS"
             echo "=========================================="
+
             echo
-            echo "All patches except PPP 625 passed."
+            echo "All Linux 6.18 patches except PPP 625 passed."
+
             echo
             echo "Failed patch:"
             echo "625-v7.0-ppp-enable-TX-scatter-gather.patch"
+
             echo
-            echo "This means the 625 patch needs to be"
-            echo "rebased for this Linux 6.18.x version."
-
-            echo "kernel_ok=false" >> "$GITHUB_OUTPUT"
-
-            exit 1
-
-          else
-
-            echo "=========================================="
-            echo "FAIL"
-            echo "=========================================="
-            echo
-            echo "Linux 6.18 patch compatibility failed."
+            echo "The PPP patch needs to be rebased."
 
             echo "kernel_ok=false" >> "$GITHUB_OUTPUT"
 
             exit 1
 
           fi
+
+          # ------------------------------------------------------
+          # 其他 patch 失败
+          # ------------------------------------------------------
+
+          echo "=========================================="
+          echo "FAIL"
+          echo "=========================================="
+
+          echo
+          echo "Linux 6.18 patch compatibility test failed."
+
+          echo "kernel_ok=false" >> "$GITHUB_OUTPUT"
+
+          exit 1
+```
