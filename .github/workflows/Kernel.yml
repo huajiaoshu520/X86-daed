@@ -263,6 +263,7 @@ jobs:
           export TERM=xterm
 
           cat > .config <<'EOF'
+          CONFIG_LINUX_6_18=y
           CONFIG_TARGET_x86=y
           CONFIG_TARGET_x86_64=y
           CONFIG_TARGET_x86_64_DEVICE_generic=y
