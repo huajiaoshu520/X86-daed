@@ -2,18 +2,17 @@ name: LEDE Kernel Checker
 on:
   workflow_dispatch:
   schedule:
-    # 每天北京时间 08:00
+    # 每天 UTC 00:00，北京时间 08:00
     - cron: "0 0 * * *"
 permissions:
-  contents: write
+  contents: read
   actions: read
 env:
   REPO_URL: https://github.com/coolsnowwolf/lede
   REPO_BRANCH: master
 jobs:
   # ============================================================
-  # 第一阶段：
-  # 检查 LEDE / Linux testing kernel
+  # 第一阶段：检查 LEDE 的 Linux testing kernel
   # ============================================================
   kernel-check:
     runs-on: ubuntu-24.04
@@ -21,9 +20,9 @@ jobs:
       kernel_ok: ${{ steps.result.outputs.kernel_ok }}
       kernel_version: ${{ steps.kernel.outputs.new_version }}
     steps:
-      # ----------------------------------------------------------
+      # ========================================================
       # 1. 安装依赖
-      # ----------------------------------------------------------
+      # ========================================================
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -50,9 +49,9 @@ jobs:
             kmod \
             libelf-dev \
             patch
-      # ----------------------------------------------------------
+      # ========================================================
       # 2. Clone LEDE
-      # ----------------------------------------------------------
+      # ========================================================
       - name: Clone LEDE
         run: |
           git clone \
@@ -60,24 +59,23 @@ jobs:
             --branch "$REPO_BRANCH" \
             "$REPO_URL" \
             lede
-      # ----------------------------------------------------------
+      # ========================================================
       # 3. 显示 LEDE commit
-      # ----------------------------------------------------------
+      # ========================================================
       - name: Show LEDE commit
         working-directory: lede
         run: |
           echo "=========================================="
           echo "LEDE commit"
           echo "=========================================="
-          git log -1 \
-            --oneline \
-            --decorate
+          git log -1 --oneline --decorate
           echo
+          echo "Full commit:"
           git rev-parse HEAD
-      # ----------------------------------------------------------
-      # 4. 读取 x86 testing kernel
-      # ----------------------------------------------------------
-      - name: Detect testing kernel
+      # ========================================================
+      # 4. 读取 x86 稳定 / testing kernel
+      # ========================================================
+      - name: Detect x86 kernel versions
         id: testing
         working-directory: lede
         shell: bash
@@ -88,33 +86,57 @@ jobs:
             echo "ERROR: $FILE not found"
             exit 1
           fi
-          TESTING=$(
+          STABLE=$(
             sed -n \
-              's/^KERNEL_TESTING_PATCHVER[[:space:]]*:=\(.*\)$/\1/p' \
+              's/^KERNEL_PATCHVER[[:space:]]*:=\([0-9.]*\).*$/\1/p' \
               "$FILE" |
+            head -1 |
             tr -d '[:space:]'
           )
+          TESTING=$(
+            sed -n \
+              's/^KERNEL_TESTING_PATCHVER[[:space:]]*:=\([0-9.]*\).*$/\1/p' \
+              "$FILE" |
+            head -1 |
+            tr -d '[:space:]'
+          )
+          echo "=========================================="
+          echo "x86 kernel configuration"
+          echo "=========================================="
+          echo "Stable : $STABLE"
+          echo "Testing: $TESTING"
+          if [ -z "$STABLE" ]; then
+            echo "ERROR: KERNEL_PATCHVER not found"
+            exit 1
+          fi
           if [ -z "$TESTING" ]; then
             echo "ERROR: KERNEL_TESTING_PATCHVER not found"
             exit 1
           fi
-          echo "=========================================="
-          echo "x86 stable kernel:"
-          grep '^KERNEL_PATCHVER' "$FILE" || true
-          echo
-          echo "x86 testing kernel:"
-          echo "6.$TESTING" 2>/dev/null || echo "$TESTING"
-          echo "=========================================="
-          # 如果结果只是 6.18 这种完整版本
-          if [[ "$TESTING" =~ ^6\. ]]; then
-            TESTING_BRANCH="$TESTING"
-          else
-            TESTING_BRANCH="$TESTING"
+          # 我们这里只测试 testing kernel。
+          #
+          # 当前你的 LEDE：
+          #
+          # KERNEL_PATCHVER=6.12
+          # KERNEL_TESTING_PATCHVER=6.18
+          #
+          # 因此这里必须得到 6.18。
+          if [ "$TESTING" != "6.18" ]; then
+            echo
+            echo "WARNING:"
+            echo "当前 x86 testing kernel 不是 6.18"
+            echo "Testing kernel = $TESTING"
+            echo
+            echo "这个 Checker 专门用于测试 Linux 6.18。"
+            exit 1
           fi
-          echo "testing=$TESTING_BRANCH" >> "$GITHUB_OUTPUT"
-      # ----------------------------------------------------------
-      # 5. 找到 testing kernel 的 include 文件
-      # ----------------------------------------------------------
+          echo
+          echo "Testing Linux kernel: $TESTING"
+          echo "stable=$STABLE" >> "$GITHUB_OUTPUT"
+          echo "testing=$TESTING" >> "$GITHUB_OUTPUT"
+      # ========================================================
+      # 5. 找到 include/kernel-6.18
+      # ========================================================
       - name: Detect kernel include file
         id: kernel_file
         working-directory: lede
@@ -122,11 +144,11 @@ jobs:
         run: |
           set -e
           TESTING="${{ steps.testing.outputs.testing }}"
-          # 例如：
-          # 6.18
-          # 6.12
           FILE="include/kernel-${TESTING}"
+          echo "Kernel include file:"
+          echo "$FILE"
           if [ ! -f "$FILE" ]; then
+            echo
             echo "ERROR: $FILE not found"
             echo
             echo "Available kernel files:"
@@ -137,12 +159,11 @@ jobs:
               -print
             exit 1
           fi
-          echo "Kernel file: $FILE"
           echo "file=$FILE" >> "$GITHUB_OUTPUT"
-      # ----------------------------------------------------------
-      # 6. 读取当前 kernel 版本
-      # ----------------------------------------------------------
-      - name: Detect current kernel
+      # ========================================================
+      # 6. 读取当前 6.18 kernel
+      # ========================================================
+      - name: Detect current 6.18 kernel
         id: current
         working-directory: lede
         shell: bash
@@ -157,7 +178,8 @@ jobs:
             tail -1
           )
           if [ -z "$CURRENT" ]; then
-            echo "ERROR: current kernel not found"
+            echo "ERROR: Cannot detect current kernel"
+            echo
             cat "$FILE"
             exit 1
           fi
@@ -166,16 +188,14 @@ jobs:
           echo "$CURRENT"
           echo "=========================================="
           echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
-      # ----------------------------------------------------------
-      # 7. 获取 kernel.org 最新版本
-      # ----------------------------------------------------------
-      - name: Get latest kernel
+      # ========================================================
+      # 7. 获取 kernel.org 最新 6.18.x
+      # ========================================================
+      - name: Get latest Linux 6.18
         id: kernel
         shell: bash
         run: |
           set -e
-          TESTING="${{ steps.testing.outputs.testing }}"
-          echo "Testing branch: $TESTING"
           PAGE=$(
             curl -fsSL \
               https://www.kernel.org/pub/linux/kernel/v6.x/
@@ -183,58 +203,60 @@ jobs:
           LATEST=$(
             echo "$PAGE" |
             grep -oE \
-              "linux-${TESTING}\.[0-9]+\.tar\.xz" |
-            sed \
-              "s/linux-//" |
-            sed \
-              's/\.tar\.xz//' |
+              'linux-6\.18\.[0-9]+\.tar\.xz' |
+            sed 's/linux-//' |
+            sed 's/\.tar\.xz//' |
             sort -V |
             tail -1
           )
           if [ -z "$LATEST" ]; then
-            echo "ERROR: cannot find latest kernel"
+            echo "ERROR: Cannot find latest Linux 6.18"
             exit 1
           fi
           echo "=========================================="
-          echo "Latest kernel:"
+          echo "Latest Linux 6.18:"
           echo "$LATEST"
           echo "=========================================="
           echo "new_version=$LATEST" >> "$GITHUB_OUTPUT"
-      # ----------------------------------------------------------
-      # 8. 判断是否有更新
-      # ----------------------------------------------------------
+      # ========================================================
+      # 8. 比较版本
+      # ========================================================
       - name: Compare kernel versions
         id: compare
         shell: bash
         run: |
           CURRENT="${{ steps.current.outputs.current }}"
           LATEST="${{ steps.kernel.outputs.new_version }}"
-          echo "Current : $CURRENT"
-          echo "Latest  : $LATEST"
+          echo "Current: $CURRENT"
+          echo "Latest : $LATEST"
           if [ "$CURRENT" = "$LATEST" ]; then
-            echo "No kernel update."
+            echo
+            echo "当前已经是最新 Linux 6.18。"
             echo "update=false" >> "$GITHUB_OUTPUT"
           else
-            echo "Kernel update detected."
+            echo
+            echo "发现 Linux 6.18 更新。"
             echo "update=true" >> "$GITHUB_OUTPUT"
           fi
-      # ----------------------------------------------------------
-      # 9. 下载 kernel
-      # ----------------------------------------------------------
-      - name: Download kernel
+      # ========================================================
+      # 9. 下载最新 kernel
+      # ========================================================
+      - name: Download Linux kernel
         if: steps.compare.outputs.update == 'true'
         run: |
+          set -e
           VERSION="${{ steps.kernel.outputs.new_version }}"
           wget \
             --progress=dot:giga \
             "https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-${VERSION}.tar.xz"
-      # ----------------------------------------------------------
-      # 10. SHA256
-      # ----------------------------------------------------------
-      - name: Calculate SHA256
+      # ========================================================
+      # 10. 计算 SHA256
+      # ========================================================
+      - name: Calculate kernel SHA256
         if: steps.compare.outputs.update == 'true'
         id: hash
         run: |
+          set -e
           VERSION="${{ steps.kernel.outputs.new_version }}"
           HASH=$(
             sha256sum \
@@ -242,14 +264,17 @@ jobs:
             awk '{print $1}'
           )
           echo "=========================================="
-          echo "Kernel SHA256:"
+          echo "Linux kernel:"
+          echo "$VERSION"
+          echo
+          echo "SHA256:"
           echo "$HASH"
           echo "=========================================="
           echo "hash=$HASH" >> "$GITHUB_OUTPUT"
-      # ----------------------------------------------------------
-      # 11. 修改 kernel include
-      # ----------------------------------------------------------
-      - name: Update kernel include
+      # ========================================================
+      # 11. 临时修改 include/kernel-6.18
+      # ========================================================
+      - name: Update Linux 6.18 kernel hash
         if: steps.compare.outputs.update == 'true'
         working-directory: lede
         run: |
@@ -259,11 +284,9 @@ jobs:
           NEW="${{ steps.kernel.outputs.new_version }}"
           HASH="${{ steps.hash.outputs.hash }}"
           echo "=========================================="
-          echo "Updating:"
-          echo "$CURRENT"
-          echo "to"
-          echo "$NEW"
+          echo "Kernel update"
           echo "=========================================="
+          echo "$CURRENT -> $NEW"
           cp "$FILE" "${FILE}.backup"
           python3 <<PY
           from pathlib import Path
@@ -273,59 +296,57 @@ jobs:
           current = "$CURRENT"
           new = "$NEW"
           sha256 = "$HASH"
-          # ------------------------------------------------------
-          # 修改 LINUX_VERSION
-          # ------------------------------------------------------
-          version_match = re.match(
-              r"^(\d+)\.(\d+)\.(\d+)$",
+          # ----------------------------------------------------
+          # 更新 LINUX_VERSION-6.18
+          # ----------------------------------------------------
+          m = re.fullmatch(
+              r"6\.18\.(\d+)",
               new
           )
-          if not version_match:
+          if not m:
               raise SystemExit(
-                  f"Invalid kernel version: {new}"
+                  f"Invalid Linux 6.18 version: {new}"
               )
-          major = version_match.group(1)
-          minor = version_match.group(2)
-          patch = version_match.group(3)
-          # 例如：
-          # LINUX_VERSION-6.18 = .38
-          #
-          # 改成：
-          # LINUX_VERSION-6.18 = .44
-          pattern = (
-              r"^LINUX_VERSION-"
-              + re.escape(major)
-              + r"\."
-              + re.escape(minor)
-              + r"\s*=.*$"
+          patch_version = m.group(1)
+          version_pattern = (
+              r"^LINUX_VERSION-6\.18\s*=.*$"
           )
-          replacement = (
-              f"LINUX_VERSION-{major}.{minor} = .{patch}"
+          version_replacement = (
+              f"LINUX_VERSION-6.18 = .{patch_version}"
           )
           text, count = re.subn(
-              pattern,
-              replacement,
+              version_pattern,
+              version_replacement,
               text,
               flags=re.MULTILINE
           )
           if count != 1:
               raise SystemExit(
-                  f"LINUX_VERSION replacement failed: {count}"
+                  "Failed to update LINUX_VERSION-6.18"
               )
-          # ------------------------------------------------------
-          # 删除旧 hash
-          # ------------------------------------------------------
-          text = re.sub(
+          # ----------------------------------------------------
+          # 删除旧 HASH
+          # ----------------------------------------------------
+          old_pattern = (
               r"^LINUX_KERNEL_HASH-"
               + re.escape(current)
-              + r"\s*=.*\n?",
+              + r"\s*=.*$\n?"
+          )
+          text, count = re.subn(
+              old_pattern,
               "",
               text,
               flags=re.MULTILINE
           )
-          # ------------------------------------------------------
-          # 添加新 hash
-          # ------------------------------------------------------
+          if count != 1:
+              raise SystemExit(
+                  f"Failed to remove old hash: {current}"
+              )
+          # ----------------------------------------------------
+          # 添加新 HASH
+          # ----------------------------------------------------
+          if not text.endswith("\n"):
+              text += "\n"
           text += (
               f"LINUX_KERNEL_HASH-{new} = {sha256}\n"
           )
@@ -333,21 +354,20 @@ jobs:
           PY
           echo
           echo "=========================================="
-          echo "Updated kernel file"
+          echo "Updated include/kernel-6.18"
           echo "=========================================="
           cat "$FILE"
-      # ----------------------------------------------------------
-      # 12. 设置 x86_64
-      # ----------------------------------------------------------
-      - name: Configure x86_64 testing kernel
-        if: steps.compare.outputs.update == 'true'
+      # ========================================================
+      # 12. 配置 x86_64
+      # ========================================================
+      - name: Configure x86_64
         working-directory: lede
         shell: bash
         run: |
           set -e
           export TERM=xterm
           echo "=========================================="
-          echo "Configure x86_64"
+          echo "配置 x86_64"
           echo "=========================================="
           cat > .config <<'EOF'
           CONFIG_TARGET_x86=y
@@ -355,62 +375,120 @@ jobs:
           CONFIG_TARGET_x86_64_DEVICE_generic=y
           EOF
           make defconfig
-          echo
-          echo "=========================================="
-          echo "Kernel configuration"
-          echo "=========================================="
-          grep -E \
-            'CONFIG_TARGET_x86|CONFIG_KERNEL' \
-            .config || true
-      # ----------------------------------------------------------
-      # 13. 确认最终 Kernel 版本
-      # ----------------------------------------------------------
-      - name: Verify selected kernel
-        if: steps.compare.outputs.update == 'true'
+      # ========================================================
+      # 13. 强制确认 Linux 版本
+      #
+      # 这是你要求添加的检查。
+      #
+      # 它不会修改源码，只负责把：
+      #
+      # 1. x86 Makefile
+      # 2. include/kernel-6.18
+      # 3. .config
+      # 4. 所有 KERNEL_PATCHVER
+      #
+      # 打印出来。
+      # ========================================================
+      - name: 强制确认 Linux 版本
         working-directory: lede
         shell: bash
         run: |
           set -e
-          echo "=========================================="
-          echo "Verify kernel selection"
-          echo "=========================================="
+          echo
+          echo "=================================================="
+          echo "===== 强制确认 Linux 版本 ====="
+          echo "=================================================="
+          echo
+          echo "===== x86 Makefile ====="
+          grep -E \
+            'KERNEL_PATCHVER|KERNEL_TESTING_PATCHVER' \
+            target/linux/x86/Makefile || true
+          echo
+          echo "===== kernel-6.18 ====="
+          cat include/kernel-6.18
+          echo
+          echo "===== .config ====="
+          grep -E \
+            'CONFIG_TARGET_x86|CONFIG_KERNEL|TESTING' \
+            .config || true
+          echo
+          echo "===== target Makefile ====="
           grep -R \
-            'KERNEL_PATCHVER\|KERNEL_TESTING_PATCHVER' \
+            'KERNEL_PATCHVER' \
             target/linux/x86 \
+            include \
             -n || true
           echo
-          echo "Kernel include:"
-          cat "${{ steps.kernel_file.outputs.file }}"
-      # ----------------------------------------------------------
-      # 14. 测试 Linux patch
-      # ----------------------------------------------------------
-      - name: Test Linux 6.18 patches
-        if: steps.compare.outputs.update == 'true'
+          echo "===== 当前工作目录 ====="
+          pwd
+          echo
+          echo "===== LEDE commit ====="
+          git rev-parse HEAD
+          echo
+          echo "=================================================="
+          echo "===== 版本确认结束 ====="
+          echo "=================================================="
+      # ========================================================
+      # 14. 明确确认 include/kernel-6.18 使用的是新版本
+      # ========================================================
+      - name: Verify Linux 6.18 target
+        working-directory: lede
+        shell: bash
+        run: |
+          set -e
+          EXPECTED="${{ steps.kernel.outputs.new_version }}"
+          echo "Expected Linux kernel:"
+          echo "$EXPECTED"
+          echo
+          echo "include/kernel-6.18:"
+          cat include/kernel-6.18
+          # 如果这次检测到了新版本，
+          # 必须确认文件里已经出现这个版本。
+          if grep -q \
+            "LINUX_KERNEL_HASH-${EXPECTED}" \
+            include/kernel-6.18; then
+            echo
+            echo "OK: include/kernel-6.18 contains $EXPECTED"
+          else
+            echo
+            echo "ERROR: include/kernel-6.18 does NOT contain $EXPECTED"
+            exit 1
+          fi
+      # ========================================================
+      # 15. 测试 Linux patch
+      # ========================================================
+      - name: 开始测试 Linux Kernel Patch
         working-directory: lede
         shell: bash
         run: |
           set -o pipefail
           export TERM=xterm
-          echo "=========================================="
+          echo
+          echo "======================================"
           echo "开始测试 Linux Kernel Patch"
-          echo "=========================================="
+          echo "======================================"
           make target/linux/prepare V=s \
             2>&1 |
             tee kernel_prepare.log
-      # ----------------------------------------------------------
-      # 15. 测试成功
-      # ----------------------------------------------------------
+      # ========================================================
+      # 16. 测试成功
+      # ========================================================
       - name: Kernel test result
         id: result
         if: success()
         run: |
-          echo "=========================================="
-          echo "Kernel Patch TEST PASSED"
-          echo "=========================================="
+          echo
+          echo "======================================"
+          echo "Linux Kernel Patch TEST PASSED"
+          echo "======================================"
+          echo "Testing kernel:"
+          echo "${{ steps.kernel.outputs.new_version }}"
+          echo
+          echo "所有 Linux kernel patch 已通过。"
           echo "kernel_ok=true" >> "$GITHUB_OUTPUT"
-      # ----------------------------------------------------------
-      # 16. 上传失败日志
-      # ----------------------------------------------------------
+      # ========================================================
+      # 17. 上传失败日志
+      # ========================================================
       - name: Upload kernel failure logs
         if: failure()
         uses: actions/upload-artifact@v4
@@ -420,10 +498,11 @@ jobs:
             lede/kernel_prepare.log
             lede/build_dir/**/*.rej
             lede/build_dir/**/linux-*/.config
+            lede/include/kernel-6.18
           if-no-files-found: ignore
   # ============================================================
   # 第二阶段：
-  # Kernel 测试通过以后才通知正式 X86 编译
+  # Kernel 测试成功以后，才触发 X86.yml
   # ============================================================
   trigger-build:
     needs: kernel-check
@@ -442,12 +521,14 @@ jobs:
               "kernel_check": "passed",
               "kernel_version": "${{ needs.kernel-check.outputs.kernel_version }}"
             }
-      - name: Build triggered
+      - name: Build trigger result
         run: |
-          echo "=========================================="
-          echo "Kernel compatibility test PASSED"
-          echo "=========================================="
-          echo "Kernel:"
+          echo
+          echo "======================================"
+          echo "Kernel compatibility check PASSED"
+          echo "======================================"
+          echo
+          echo "Linux kernel:"
           echo "${{ needs.kernel-check.outputs.kernel_version }}"
           echo
-          echo "X86.yml has been triggered."
+          echo "X86.yml 已触发。"
