@@ -24,6 +24,9 @@ echo "src-git daed https://github.com/kenzok8/openwrt-daede" >> "feeds.conf.defa
 #daed
 curl -L https://raw.githubusercontent.com/immortalwrt/immortalwrt/master/tools/llvm-bpf/Makefile -o tools/llvm-bpf/Makefile
 curl -L https://raw.githubusercontent.com/immortalwrt/immortalwrt/refs/heads/master/include/bpf.mk -o include/bpf.mk
+# 升级内核
+sed -i 's/38/44/g' ./include/kernel-6.18
+sed -i 's/ac26e508abd56e9f8b89872b6e10c49fc823bcc70d8068a5d8504c1a7c4ff045/0f72d938f06828e82c90405174fe572287db7bfe089e2fc46572a99a7f240d43/g' ./include/kernel-6.18
 #修改daed编译内核
 cp ./include/kernel-6.18 ./target/linux/x86/generic
 cp ./include/kernel-6.18 ./target/linux/generic
