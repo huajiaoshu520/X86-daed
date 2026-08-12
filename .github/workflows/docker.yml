@@ -45,14 +45,19 @@ jobs:
       #
       # 29.1.1 永远作为固定基准
       #
-      # 重要：
-      # 不使用 GitHub API 的 object.sha 作为 commit。
+      # Docker Engine:
+      #   Moby tag
+      #   ↓
+      #   peeled commit
+      #   ↓
+      #   tar.gz SHA256
       #
-      # 使用：
-      #
-      # refs/tags/<tag>^{}
-      #
-      # 获取 tag 最终指向的真实 commit。
+      # Docker CLI:
+      #   CLI tag
+      #   ↓
+      #   peeled commit
+      #   ↓
+      #   tar.gz SHA256
       # ==========================================================
       - name: Check and update Docker version
         shell: bash
@@ -84,16 +89,13 @@ jobs:
           }
 
           # ------------------------------------------------------
-          # 获取 Git tag 对应的真实 commit
+          # 获取 Git tag 最终 commit
           #
-          # 关键：
+          # 对 annotated tag：
           #
-          # refs/tags/v29.7.2
-          # refs/tags/v29.7.2^{}
+          # refs/tags/<tag>^{}
           #
-          # ^{} 是 peeled tag，也就是最终 commit。
-          #
-          # 这样可以正确处理 annotated tag。
+          # 才是真正的 commit。
           # ------------------------------------------------------
           get_tag_commit() {
             local repo="$1"
@@ -115,14 +117,20 @@ jobs:
             # 优先使用 peeled commit
             commit="$(
               echo "$result" |
-              awk '$2 == "refs/tags/'"$tag"'^{}" {print $1; exit}'
+              awk '$2 == "refs/tags/'"$tag"'^{}" {
+                print $1
+                exit
+              }'
             )"
 
-            # 如果是 lightweight tag，则使用普通 tag SHA
+            # lightweight tag
             if [[ -z "$commit" ]]; then
               commit="$(
                 echo "$result" |
-                awk '$2 == "refs/tags/'"$tag"'" {print $1; exit}'
+                awk '$2 == "refs/tags/'"$tag"'" {
+                  print $1
+                  exit
+                }'
               )"
             fi
 
@@ -136,17 +144,7 @@ jobs:
           }
 
           # ------------------------------------------------------
-          # 获取 Moby 最新正式版本
-          #
-          # 只接受：
-          #
-          # docker-v29.7.2
-          #
-          # 不接受：
-          #
-          # docker-v29.7.2-rc1
-          # docker-v29.7.2-beta
-          # docker-v29.7.2-alpha
+          # Moby 最新正式版本
           # ------------------------------------------------------
           echo "Finding latest Moby release..."
 
@@ -174,7 +172,7 @@ jobs:
           echo "Latest Docker:       $MOBY_VERSION"
 
           # ------------------------------------------------------
-          # 获取 Moby 真实 commit
+          # Moby commit
           # ------------------------------------------------------
           MOBY_COMMIT="$(
             get_tag_commit \
@@ -188,7 +186,7 @@ jobs:
           echo "Moby short commit:   $MOBY_COMMIT_SHORT"
 
           # ------------------------------------------------------
-          # 下载 Moby 源码
+          # Moby SHA256
           # ------------------------------------------------------
           MOBY_TARBALL="/tmp/${MOBY_TAG}.tar.gz"
 
@@ -209,11 +207,12 @@ jobs:
           # Docker CLI
           # ------------------------------------------------------
           CLI_TAG="v${MOBY_VERSION}"
+          CLI_VERSION="$MOBY_VERSION"
 
           echo ""
           echo "Docker CLI tag:      $CLI_TAG"
 
-          # 检查 CLI tag 是否存在
+          # 检查 CLI tag
           if ! git ls-remote \
               --exit-code \
               --tags \
@@ -228,7 +227,7 @@ jobs:
           fi
 
           # ------------------------------------------------------
-          # 获取 CLI 真实 commit
+          # CLI commit
           # ------------------------------------------------------
           CLI_COMMIT="$(
             get_tag_commit \
@@ -242,7 +241,7 @@ jobs:
           echo "CLI short commit:    $CLI_COMMIT_SHORT"
 
           # ------------------------------------------------------
-          # 下载 CLI 源码
+          # CLI SHA256
           # ------------------------------------------------------
           CLI_TARBALL="/tmp/docker-cli-${CLI_TAG}.tar.gz"
 
@@ -260,14 +259,12 @@ jobs:
           echo "CLI SHA256:          $CLI_SHA256"
 
           # ------------------------------------------------------
-          # 判断是否有更新
-          #
-          # 29.1.1 永远是固定基准。
+          # 比较版本
           # ------------------------------------------------------
           if ! version_gt "$MOBY_VERSION" "$BASE_VERSION"; then
             echo ""
-            echo "Latest Docker $MOBY_VERSION"
-            echo "Base Docker   $BASE_VERSION"
+            echo "Latest Docker: $MOBY_VERSION"
+            echo "Base Docker:   $BASE_VERSION"
             echo ""
             echo "No update required."
             exit 0
@@ -279,13 +276,9 @@ jobs:
           echo "${BASE_VERSION} -> ${MOBY_VERSION}"
           echo "========================================"
 
-          # ------------------------------------------------------
+          # ======================================================
           # 修改 diy-docker.sh
-          #
-          # 不再依赖固定旧 SHA / commit。
-          #
-          # 当前文件里面是什么，就替换成新的。
-          # ------------------------------------------------------
+          # ======================================================
           python3 - "$SCRIPT" \
             "$MOBY_VERSION" \
             "$MOBY_COMMIT_SHORT" \
@@ -312,7 +305,7 @@ jobs:
           text = path.read_text()
 
           # ======================================================
-          # 找到两个区域
+          # 找区域
           # ======================================================
 
           dockerd_start = text.find("# dockerd")
@@ -320,168 +313,145 @@ jobs:
 
           if dockerd_start == -1:
               raise SystemExit(
-                  "ERROR: Cannot find '# dockerd' section"
+                  "ERROR: Cannot find '# dockerd'"
               )
 
           if docker_start == -1:
               raise SystemExit(
-                  "ERROR: Cannot find '# docker' section"
+                  "ERROR: Cannot find '# docker'"
               )
 
           dockerd = text[dockerd_start:docker_start]
           docker = text[docker_start:]
 
           # ======================================================
-          # Moby / dockerd
+          # Docker Engine 版本
+          #
+          # 左侧永远保持 29.1.1
           # ======================================================
 
-          # 版本：
-          #
-          # 找到：
-          #
-          # s/29.1.1/29.7.2/g
-          #
-          # 或者以后：
-          #
-          # s/29.7.2/30.0.0/g
-          #
-          # 统一替换右侧目标版本。
-          # 左侧 29.1.1 永远保留。
-          # ======================================================
-
-          version_pattern = re.compile(
-              r"s/29\.1\.1/([0-9]+\.[0-9]+\.[0-9]+)/g"
+          pattern = re.compile(
+              r"s/29\.1\.1/[0-9]+\.[0-9]+\.[0-9]+/g"
           )
 
-          if not version_pattern.search(dockerd):
+          if not pattern.search(dockerd):
               raise SystemExit(
-                  "ERROR: Cannot find fixed base version "
-                  "29.1.1 in dockerd section"
+                  "ERROR: Moby version pattern not found"
               )
 
-          dockerd = version_pattern.sub(
+          dockerd = pattern.sub(
               f"s/29.1.1/{moby_version}/g",
               dockerd,
-              count=1,
+              count=1
           )
 
           # ======================================================
-          # Moby SHA256
+          # Docker Engine SHA256
           #
-          # 找到当前 Makefile 中已有的 64 位 SHA。
-          # 不写死旧 SHA。
+          # 找当前 64 位 SHA。
           # ======================================================
 
           sha_pattern = re.compile(
               r"s/([0-9a-f]{64})/([0-9a-f]{64})/g"
           )
 
-          sha_match = sha_pattern.search(dockerd)
+          match = sha_pattern.search(dockerd)
 
-          if not sha_match:
+          if not match:
               raise SystemExit(
-                  "ERROR: Cannot find Moby SHA256 replacement"
+                  "ERROR: Moby SHA256 pattern not found"
               )
 
-          old_moby_sha = sha_match.group(1)
+          old_sha = match.group(1)
 
           dockerd = dockerd.replace(
-              f"s/{old_moby_sha}/{sha_match.group(2)}/g",
-              f"s/{old_moby_sha}/{moby_sha256}/g",
-              1,
+              match.group(0),
+              f"s/{old_sha}/{moby_sha256}/g",
+              1
           )
 
           # ======================================================
-          # Moby commit
+          # Docker Engine commit
           #
-          # 当前：
-          #
-          # s/9a84135/6a43e3d/g
-          #
-          # 下一次：
-          #
-          # s/9a84135/xxxxxxxx/g
-          #
-          # 左边永远保持 9a84135。
+          # 左侧固定 9a84135
           # ======================================================
 
-          commit_match = re.search(
-              r"s/(9a84135)/([0-9a-f]{7,40})/g",
-              dockerd,
+          match = re.search(
+              r"s/9a84135/[0-9a-f]{7,40}/g",
+              dockerd
           )
 
-          if not commit_match:
+          if not match:
               raise SystemExit(
-                  "ERROR: Cannot find Moby commit replacement"
+                  "ERROR: Moby commit pattern not found"
               )
 
           dockerd = dockerd.replace(
-              commit_match.group(0),
+              match.group(0),
               f"s/9a84135/{moby_commit}/g",
-              1,
+              1
           )
 
           # ======================================================
-          # Docker CLI
+          # Docker CLI 版本
+          #
+          # 左侧仍然固定 29.1.1
           # ======================================================
 
-          if not version_pattern.search(docker):
+          if not pattern.search(docker):
               raise SystemExit(
-                  "ERROR: Cannot find fixed base version "
-                  "29.1.1 in docker CLI section"
+                  "ERROR: Docker CLI version pattern not found"
               )
 
-          docker = version_pattern.sub(
+          docker = pattern.sub(
               f"s/29.1.1/{cli_version}/g",
               docker,
-              count=1,
+              count=1
           )
 
           # ======================================================
-          # CLI SHA256
+          # Docker CLI SHA256
           # ======================================================
 
-          sha_match = sha_pattern.search(docker)
+          match = sha_pattern.search(docker)
 
-          if not sha_match:
+          if not match:
               raise SystemExit(
-                  "ERROR: Cannot find Docker CLI SHA256 replacement"
+                  "ERROR: Docker CLI SHA256 pattern not found"
               )
 
-          old_cli_sha = sha_match.group(1)
+          old_sha = match.group(1)
 
           docker = docker.replace(
-              f"s/{old_cli_sha}/{sha_match.group(2)}/g",
-              f"s/{old_cli_sha}/{cli_sha256}/g",
-              1,
+              match.group(0),
+              f"s/{old_sha}/{cli_sha256}/g",
+              1
           )
 
           # ======================================================
-          # CLI commit
+          # Docker CLI commit
           #
-          # 左边固定：
-          #
-          # 0aedba5
+          # 左侧固定 0aedba5
           # ======================================================
 
-          commit_match = re.search(
-              r"s/(0aedba5)/([0-9a-f]{7,40})/g",
-              docker,
+          match = re.search(
+              r"s/0aedba5/[0-9a-f]{7,40}/g",
+              docker
           )
 
-          if not commit_match:
+          if not match:
               raise SystemExit(
-                  "ERROR: Cannot find Docker CLI commit replacement"
+                  "ERROR: Docker CLI commit pattern not found"
               )
 
           docker = docker.replace(
-              commit_match.group(0),
+              match.group(0),
               f"s/0aedba5/{cli_commit}/g",
-              1,
+              1
           )
 
           # ======================================================
-          # 写回文件
+          # 写回
           # ======================================================
 
           new_text = (
@@ -512,60 +482,3 @@ jobs:
           echo "========================================"
 
           cat "$SCRIPT"
-
-      # ==========================================================
-      # 验证
-      #
-      # 非常重要：
-      # 在提交之前再次检查结果。
-      # ==========================================================
-      - name: Verify Docker update
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          SCRIPT="diy_script/diy-docker.sh"
-
-          echo "========================================"
-          echo "Verify diy-docker.sh"
-          echo "========================================"
-
-          grep -E \
-            "s/29\.1\.1/[0-9]+\.[0-9]+\.[0-9]+/g" \
-            "$SCRIPT"
-
-          grep -E \
-            "s/[0-9a-f]{64}/[0-9a-f]{64}/g" \
-            "$SCRIPT"
-
-          echo ""
-          echo "Docker Engine:"
-          grep "feeds/packages/utils/dockerd/Makefile" "$SCRIPT"
-
-          echo ""
-          echo "Docker CLI:"
-          grep "feeds/packages/utils/docker/Makefile" "$SCRIPT"
-
-      # ==========================================================
-      # 提交自动更新
-      # ==========================================================
-      - name: Commit Docker update
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          if git diff --quiet -- diy_script/diy-docker.sh; then
-            echo "No Docker update."
-            exit 0
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email \
-            "41898282+github-actions[bot]@users.noreply.github.com"
-
-          git add diy_script/diy-docker.sh
-
-          git commit \
-            -m "chore: update Docker version"
-
-          git push
