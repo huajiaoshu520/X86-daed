@@ -1,4 +1,4 @@
-name: Docker Version Auto Update
+name: docker auto update
 
 on:
   workflow_dispatch:
@@ -8,387 +8,258 @@ on:
 permissions:
   contents: write
 
-
 jobs:
-
-  docker-update:
-
+  build:
     runs-on: ubuntu-24.04
 
-
     steps:
-
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-
       - name: Install dependencies
         run: |
-          sudo apt-get update
+         sudo apt-get update
+         sudo apt-get install -y \
+         build-essential \
+         clang \
+         flex \
+         bison \
+         gawk \
+         gettext \
+         git \
+         libncurses-dev \
+         libssl-dev \
+         python3 \
+         rsync \
+         unzip \
+         wget \
+         curl \
+         jq \
+         zstd \
+         file
 
-          sudo apt-get install -y \
-            git \
-            curl \
-            python3
-
-
-      - name: Check and update Docker
-
+      # ==========================================================
+      # Docker 自动检测 / 更新
+      # 29.1.1 永远作为固定基准
+      # ==========================================================
+      - name: Check and update Docker version
         shell: bash
-
         run: |
-
           set -euo pipefail
-
 
           BASE_VERSION="29.1.1"
           SCRIPT="diy_script/diy-docker.sh"
 
-
-          echo "=============================="
-          echo "Docker auto update"
-          echo "Base: $BASE_VERSION"
-          echo "=============================="
-
-
+          echo "========================================"
+          echo "Docker automatic version detection"
+          echo "Fixed base version: ${BASE_VERSION}"
+          echo "========================================"
 
           if [ ! -f "$SCRIPT" ]; then
-            echo "$SCRIPT not found"
+            echo "ERROR: $SCRIPT not found"
             exit 1
           fi
 
+          # ------------------------------------------------------
+          # 获取 Moby 最新正式 Release
+          # ------------------------------------------------------
+          MOBY_TAG=$(curl -fsSL \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/moby/moby/releases/latest |
+            jq -r '.tag_name')
 
+          if [[ "$MOBY_TAG" != docker-v* ]]; then
+            echo "ERROR: Invalid Moby tag: $MOBY_TAG"
+            exit 1
+          fi
 
-          get_commit(){
+          MOBY_VERSION="${MOBY_TAG#docker-v}"
 
-            repo="$1"
-            tag="$2"
+          echo "Latest Moby tag:     $MOBY_TAG"
+          echo "Latest Docker:       $MOBY_VERSION"
 
+          # ------------------------------------------------------
+          # 获取 Moby tag 对应 commit
+          # ------------------------------------------------------
+          # ------------------------------------------------------
+          # 获取 Moby tag 对应真实 commit
+          # 处理 annotated tag
+          # ------------------------------------------------------
 
-            git ls-remote \
-              --tags \
-              "https://github.com/${repo}.git" \
-              "refs/tags/${tag}" \
-              "refs/tags/${tag}^{}" |
-            awk '
-            /\\^\\{\\}$/ {
-              print $1
-              exit
-            }
-            /^[0-9a-f]+[[:space:]]/ {
-              print $1
-              exit
-            }
-            '
+          MOBY_COMMIT=$(git ls-remote \
+            https://github.com/moby/moby.git \
+            "refs/tags/${MOBY_TAG}^{}" |
+            awk '{print $1}')
 
+          if [ -z "$MOBY_COMMIT" ]; then
+            echo "ERROR: Cannot get Moby commit"
+            exit 1
+          fi
+
+          echo "Moby commit:         $MOBY_COMMIT"
+
+          # ------------------------------------------------------
+          # 下载 Moby 源码并计算 SHA256
+          # ------------------------------------------------------
+          MOBY_TARBALL="/tmp/${MOBY_TAG}.tar.gz"
+
+          curl -fL \
+            "https://codeload.github.com/moby/moby/tar.gz/${MOBY_TAG}" \
+            -o "$MOBY_TARBALL"
+
+          MOBY_SHA256=$(sha256sum "$MOBY_TARBALL" | awk '{print $1}')
+
+          echo "Moby SHA256:         $MOBY_SHA256"
+
+          # ------------------------------------------------------
+          # Docker CLI
+          # ------------------------------------------------------
+          CLI_TAG="v${MOBY_VERSION}"
+
+          CLI_TAG_HTTP=$(curl -s \
+            -o /dev/null \
+            -w "%{http_code}" \
+            "https://api.github.com/repos/docker/cli/git/ref/tags/${CLI_TAG}")
+
+          if [ "$CLI_TAG_HTTP" != "200" ]; then
+            echo "WARNING: Docker CLI ${CLI_TAG} does not exist."
+            echo "Docker Engine will not be updated."
+            exit 0
+          fi
+
+          # ------------------------------------------------------
+          # 获取 Docker CLI tag 对应真实 commit
+          # ------------------------------------------------------
+
+          CLI_COMMIT=$(git ls-remote \
+            https://github.com/docker/cli.git \
+            "refs/tags/${CLI_TAG}^{}" |
+            awk '{print $1}')
+
+          if [ -z "$CLI_COMMIT" ]; then
+            echo "ERROR: Cannot get CLI commit"
+            exit 1
+          fi
+
+          echo "CLI tag:             $CLI_TAG"
+          echo "CLI commit:          $CLI_COMMIT"
+
+          CLI_TARBALL="/tmp/docker-cli-${CLI_TAG}.tar.gz"
+
+          curl -fL \
+            "https://codeload.github.com/docker/cli/tar.gz/${CLI_TAG}" \
+            -o "$CLI_TARBALL"
+
+          CLI_SHA256=$(sha256sum "$CLI_TARBALL" | awk '{print $1}')
+
+          echo "CLI SHA256:          $CLI_SHA256"
+
+          # ------------------------------------------------------
+          # 比较版本
+          # ------------------------------------------------------
+          version_ge() {
+            [ "$(printf '%s\n' "$1" "$2" | sort -V | head -n1)" = "$2" ]
           }
 
-
-
-
-          echo "Find latest Moby"
-
-
-          MOBY_TAG=$(
-
-            git ls-remote --tags \
-              https://github.com/moby/moby.git |
-
-            awk -F/ '
-            $3 ~ /^docker-v[0-9]+\.[0-9]+\.[0-9]+$/ {
-              print $3
-            }' |
-
-            sort -V |
-
-            tail -1
-
-          )
-
-
-          MOBY_VERSION=${MOBY_TAG#docker-v}
-
-
-
-          echo "Moby:"
-          echo "$MOBY_TAG"
-
-
-
-
-          MOBY_COMMIT=$(
-
-            get_commit \
-              moby/moby \
-              "$MOBY_TAG"
-
-          )
-
-
-          MOBY_SHORT=${MOBY_COMMIT:0:7}
-
-
-
-          echo "Commit:"
-          echo "$MOBY_SHORT"
-
-
-
-
-          MOBY_FILE="/tmp/${MOBY_TAG}.tar.gz"
-
-
-          curl -L \
-            "https://codeload.github.com/moby/moby/tar.gz/${MOBY_TAG}" \
-            -o "$MOBY_FILE"
-
-
-
-          MOBY_SHA=$(sha256sum "$MOBY_FILE" | awk '{print $1}')
-
-
-
-          echo "SHA256:"
-          echo "$MOBY_SHA"
-
-
-
-
-
-
-          # Docker CLI
-
-
-          CLI_VERSION="$MOBY_VERSION"
-
-          CLI_TAG="v${CLI_VERSION}"
-
-
-
-          echo "CLI:"
-          echo "$CLI_TAG"
-
-
-
-
-          CLI_COMMIT=$(
-
-            get_commit \
-              docker/cli \
-              "$CLI_TAG"
-
-          )
-
-
-          CLI_SHORT=${CLI_COMMIT:0:7}
-
-
-
-
-          CLI_FILE="/tmp/docker-cli-${CLI_TAG}.tar.gz"
-
-
-
-          curl -L \
-            "https://codeload.github.com/docker/cli/tar.gz/${CLI_TAG}" \
-            -o "$CLI_FILE"
-
-
-
-          CLI_SHA=$(sha256sum "$CLI_FILE" | awk '{print $1}')
-
-
-
-          echo "CLI commit:"
-          echo "$CLI_SHORT"
-
-          echo "CLI SHA:"
-          echo "$CLI_SHA"
-
-
-
-
+          if ! version_ge "$MOBY_VERSION" "$BASE_VERSION"; then
+            echo "Latest Docker $MOBY_VERSION is older than base $BASE_VERSION."
+            exit 0
+          fi
 
           if [ "$MOBY_VERSION" = "$BASE_VERSION" ]; then
-
-            echo "No update"
-
+            echo "Docker is still $BASE_VERSION."
+            echo "No update required."
             exit 0
-
           fi
 
-
-
-
-          echo "$BASE_VERSION -> $MOBY_VERSION"
-
-
-
-
-          cat > /tmp/update_docker.py <<'PY'
-
-from pathlib import Path
-import re
-import sys
-
-
-(
-    file,
-    moby_version,
-    moby_commit,
-    moby_sha,
-    cli_version,
-    cli_commit,
-    cli_sha
-)=sys.argv[1:]
-
-
-p=Path(file)
-
-text=p.read_text()
-
-
-
-# Docker version
-
-text=re.sub(
-
-    r"s/29\.1\.1/[0-9]+\.[0-9]+\.[0-9]+/g",
-
-    f"s/29.1.1/{moby_version}/g",
-
-    text,
-
-    count=2
-
-)
-
-
-
-# Moby sha
-
-text=re.sub(
-
-    r"s/[0-9a-f]{64}/" + moby_sha + "/g",
-
-    lambda m:m.group(0),
-
-    text,
-
-    count=1
-
-)
-
-
-
-# Moby commit
-
-text=re.sub(
-
-    r"s/9a84135/[0-9a-f]{7}/g",
-
-    f"s/9a84135/{moby_commit}/g",
-
-    text
-
-)
-
-
-
-# CLI sha
-
-text=re.sub(
-
-    r"s/[0-9a-f]{64}/" + cli_sha + "/g",
-
-    lambda m:m.group(0),
-
-    text,
-
-    count=1
-
-)
-
-
-
-# CLI commit
-
-text=re.sub(
-
-    r"s/0aedba5/[0-9a-f]{7}/g",
-
-    f"s/0aedba5/{cli_commit}/g",
-
-    text
-
-)
-
-
-
-p.write_text(text)
-
-PY
-
-
-
-
-
-          python3 /tmp/update_docker.py \
-            "$SCRIPT" \
-            "$MOBY_VERSION" \
-            "$MOBY_SHORT" \
-            "$MOBY_SHA" \
-            "$CLI_VERSION" \
-            "$CLI_SHORT" \
-            "$CLI_SHA"
-
-
-
-
-          echo "Updated:"
+          echo ""
+          echo "========================================"
+          echo "Docker update detected!"
+          echo "${BASE_VERSION} -> ${MOBY_VERSION}"
+          echo "========================================"
+
+          # ------------------------------------------------------
+          # 修改 diy-docker.sh
+          #
+          # 注意：
+          # 不使用旧版本号作为 sed 搜索条件。
+          # 直接替换脚本中对应的目标值。
+          # ------------------------------------------------------
+
+          python3 <<PY
+          from pathlib import Path
+          import re
+
+          path = Path("$SCRIPT")
+          text = path.read_text()
+
+          moby_version = "$MOBY_VERSION"
+          moby_commit = "$MOBY_COMMIT"
+          moby_sha256 = "$MOBY_SHA256"
+
+          cli_version = "$MOBY_VERSION"
+          cli_commit = "$CLI_COMMIT"
+          cli_sha256 = "$CLI_SHA256"
+
+          # Docker Engine
+          text = re.sub(
+              r"(?m)^\\s*-e 's/29\\.1\\.1/[^/]+/g' \\\\\\n",
+              f"       -e 's/29.1.1/{moby_version}/g' \\\\\\n",
+              text
+          )
+
+          text = re.sub(
+              r"(?m)65221f1c70feb1bd1562bb1017b586e4528be877656dc16f5be5659fc9b7e522/[^/]+",
+              f"65221f1c70feb1bd1562bb1017b586e4528be877656dc16f5be5659fc9b7e522/{moby_sha256}",
+              text
+          )
+
+          text = re.sub(
+              r"9a84135/[^/]+",
+              f"9a84135/{moby_commit[:7]}",
+              text
+          )
+
+          # Docker CLI
+          text = re.sub(
+              r"(?m)a02081b7d6fb10bfbc8afb621e7edc5124048b31eea7a1ab73c7ccd924b03a66/[^/]+",
+              f"a02081b7d6fb10bfbc8afb621e7edc5124048b31eea7a1ab73c7ccd924b03a66/{cli_sha256}",
+              text
+          )
+
+          text = re.sub(
+              r"0aedba5/[^/]+",
+              f"0aedba5/{cli_commit[:7]}",
+              text
+          )
+
+          path.write_text(text)
+          PY
+
+          echo ""
+          echo "Updated diy-docker.sh:"
           cat "$SCRIPT"
 
-
-
-
-
-      - name: Commit update
-
+      # ----------------------------------------------------------
+      # 提交自动更新
+      # ----------------------------------------------------------
+      - name: Commit Docker update
         shell: bash
-
         run: |
-
           set -e
 
-
           if git diff --quiet -- diy_script/diy-docker.sh; then
-
-            echo "No changes"
-
+            echo "No Docker update."
             exit 0
-
           fi
 
-
-
-          git config user.name \
-            "github-actions[bot]"
-
-
-          git config user.email \
-            "41898282+github-actions[bot]@users.noreply.github.com"
-
-
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           git add diy_script/diy-docker.sh
 
-
-
-          git commit \
-            -m "chore: update docker version"
-
-
+          git commit -m "chore: update Docker version"
 
           git push
