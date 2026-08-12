@@ -3,7 +3,7 @@ name: docker auto update
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 2 * * *"
+    - cron: "0 17 * * *"
 
 permissions:
   contents: write
