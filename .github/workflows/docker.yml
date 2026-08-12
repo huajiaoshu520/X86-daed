@@ -13,12 +13,12 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
+      - name: 检查准备 #Checkout
+        uses: actions/checkout@main
         with:
           fetch-depth: 0
 
-      - name: Install dependencies
+      - name: 开始安装依赖 #Install dependencies
         run: |
          sudo apt-get update
          sudo apt-get install -y \
@@ -44,7 +44,7 @@ jobs:
       # Docker 自动检测 / 更新
       # 29.1.1 永远作为固定基准
       # ==========================================================
-      - name: Check and update Docker version
+      - name: Docker 自动检测 / 更新 #Check and update Docker version
         shell: bash
         run: |
           set -euo pipefail
@@ -242,10 +242,7 @@ jobs:
           echo "Updated diy-docker.sh:"
           cat "$SCRIPT"
 
-      # ----------------------------------------------------------
-      # 提交自动更新
-      # ----------------------------------------------------------
-      - name: Commit Docker update
+      - name: 提交自动更新 #Commit Docker update
         shell: bash
         run: |
           set -e
@@ -263,3 +260,11 @@ jobs:
           git commit -m "chore: update Docker version"
 
           git push
+
+      - name: 删除工作流程运行 #Delete workflow runs
+        uses: Mattraks/delete-workflow-runs@main
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          retain_days: 1
+          keep_minimum_runs: 2
