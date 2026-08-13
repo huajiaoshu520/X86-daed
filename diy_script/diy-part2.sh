@@ -36,7 +36,7 @@ mkdir -p ./feeds/luci/themes/luci-theme-argon/htdocs/luci-static/argon/backgroun
 
 
 # 临时
-# sed -i 's/6.12/6.18/g'  ./target/linux/x86/Makefile
+sed -i 's/6.12/6.18/g'  ./target/linux/x86/Makefile
 
 #lucky
 sed -i 's|/etc/lucky|/etc/config/lucky2|g' ./feeds/luci/applications/luci-app-lucky/root/etc/config/lucky
