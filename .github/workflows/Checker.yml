@@ -33,7 +33,7 @@ env:
   REPO_PATH_istore : "istore"
   
    # daed源码
-  REPO_URL_daed: https://github.com/QiuSimons/luci-app-daed
+  REPO_URL_daed: https://github.com/kenzok8/openwrt-daede
   REPO_BRANCH_daed: kix
   REPO_PATH_daed : "daed"  
 
