@@ -26,7 +26,7 @@ curl -L https://raw.githubusercontent.com/immortalwrt/immortalwrt/master/tools/l
 curl -L https://raw.githubusercontent.com/immortalwrt/immortalwrt/refs/heads/master/include/bpf.mk -o include/bpf.mk
 
 #修改daed编译内核
-cp ./include/kernel-6.12 ./target/linux/x86/generic
-cp ./include/kernel-6.12 ./target/linux/generic
+cp ./include/kernel-6.18 ./target/linux/x86/generic
+cp ./include/kernel-6.18 ./target/linux/generic
 rm -rf package/kernel/bpf-headers
 git clone https://github.com/huajiaoshu520/bpf-headers ./package/kernel/bpf-headers
