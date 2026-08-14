@@ -34,7 +34,7 @@ env:
   
    # daed源码
   REPO_URL_daed: https://github.com/kenzok8/openwrt-daede
-  REPO_BRANCH_daed: kix
+  REPO_BRANCH_daed: main
   REPO_PATH_daed : "daed"  
 
 on:
