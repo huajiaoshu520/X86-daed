@@ -52,3 +52,26 @@ sed -i '/runc.installer/{s/^/# /}' ./feeds/packages/utils/dockerd/Makefile
 
 #同步lede-xray
 cp ./feeds/helloworld/xray-core/Makefile ./feeds/packages/net/xray-core/Makefile
+
+# fw4 docker
+mkdir -p package/base-files/files/etc/docker
+
+cat > package/base-files/files/etc/docker/daemon.json <<'EOF'
+{
+    "data-root": "/mnt/nvme0n1p1/docker",
+    "log-level": "warn",
+    "iptables": false,
+    "firewall-backend": "nftables",
+    "hosts": [
+        "unix:///var/run/docker.sock"
+    ]
+}
+EOF
+
+mkdir -p package/base-files/files/etc/config
+
+cat > package/base-files/files/etc/config/dockerd <<'EOF'
+config globals 'globals'
+        option iptables '0'
+        option alt_config_file '/etc/docker/daemon.json'
+EOF
