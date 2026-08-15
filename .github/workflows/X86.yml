@@ -194,7 +194,18 @@ jobs:
         cd openwrt
         ./scripts/feeds install -a
 
+    - name: 检查 dockerd 构建脚本
+      run: |
+        cd openwrt
 
+        echo "========== dockerd Makefile =========="
+        grep -nE 'containerd|runc|tini|proxy|nested|DOCKER' feeds/packages/utils/dockerd/Makefile || true
+
+        echo "========== hack/make.sh =========="
+        grep -n -C 15 "Copying nested executables" build_dir/target-x86_64_musl/dockerd-29.7.2/hack/make.sh || true
+
+        echo "========== nested =========="
+        grep -n -C 5 "nested" build_dir/target-x86_64_musl/dockerd-29.7.2/hack/make.sh || true
     - name: patch2补丁和自定义设置 # Load custom configuration
       run: |
         [ -e files ] && mv files openwrt/files
