@@ -321,28 +321,59 @@ jobs:
 
 
         echo ""
-        echo "========== 3. hack/make.sh =========="
+        echo ""
+        echo "========== 3. hack/make.sh 完整检查 =========="
 
         if [ -f "$DOCKER_DIR/hack/make.sh" ]; then
-          grep -n -C 20 \
-            "Copying nested executables" \
+          echo "--- 文件信息 ---"
+          ls -lh "$DOCKER_DIR/hack/make.sh"
+
+          echo ""
+          echo "--- nested / executable / cp 相关代码 ---"
+          grep -n -C 15 \
+            -E 'nested|executable|Copying|docker-proxy|cp ' \
             "$DOCKER_DIR/hack/make.sh" || true
+
+          echo ""
+          echo "--- make.sh 前 300 行 ---"
+          nl -ba "$DOCKER_DIR/hack/make.sh" | head -n 300
         else
           echo "找不到 hack/make.sh"
         fi
 
 
         echo ""
-        echo "========== 4. nested 相关代码 =========="
+        echo "========== 4. 检查 docker-proxy =========="
 
-        if [ -f "$DOCKER_DIR/hack/make.sh" ]; then
-          grep -n -C 10 \
-            "nested" \
-            "$DOCKER_DIR/hack/make.sh" || true
-        fi
-
+        echo "--- 源码 ---"
+        find "$DOCKER_DIR" \
+          -path '*/cmd/docker-proxy/*' \
+          -type f \
+          -print 2>/dev/null || true
 
         echo ""
+        echo "--- Go package ---"
+        if [ -d "$DOCKER_DIR/cmd/docker-proxy" ]; then
+          ls -lah "$DOCKER_DIR/cmd/docker-proxy/"
+        fi
+
+        echo ""
+        echo "--- 搜索 docker-proxy 定义 ---"
+        grep -Rni \
+          "docker-proxy" \
+          "$DOCKER_DIR/hack" \
+          "$DOCKER_DIR/Makefile" \
+          "$DOCKER_DIR/cmd" \
+          2>/dev/null | head -n 200 || true
+
+        echo ""
+        echo "--- 所有 .installer ---"
+        find "$DOCKER_DIR/hack/dockerfile/install" \
+          -maxdepth 1 \
+          -type f \
+          -name '*.installer' \
+          -print \
+          -exec sh -c 'echo "===== $1 ====="; cat "$1"' _ {} \;
         echo "========== 5. bundles 目录 =========="
 
         if [ -d "$DOCKER_DIR/bundles" ]; then
