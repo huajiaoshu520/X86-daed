@@ -34,7 +34,22 @@ sed -i "s/DISTRIB_REVISION='R.*.*.[0-9]/& Compiled by Jason/" ./package/lean/def
 # 主题背景
 mkdir -p ./feeds/luci/themes/luci-theme-argon/htdocs/luci-static/argon/background/ && curl -o ./feeds/luci/themes/luci-theme-argon/htdocs/luci-static/argon/background/Network.mp4 https://raw.githubusercontent.com/huajiaoshu520/X86-daed/main/other/argon/video/default/Network.mp4
 
+# dockerd 29.x 修复：NESTED_EXECUTABLES 为空时禁止执行空 cp
+DOCKER_DIR=$(find ./build_dir -maxdepth 3 -type d -name 'dockerd-*' | head -n1)
 
+if [ -n "$DOCKER_DIR" ]; then
+    echo ">>> Found dockerd: $DOCKER_DIR"
+
+    grep -RIn 'NESTED_EXECUTABLES' "$DOCKER_DIR/hack" 2>/dev/null || true
+
+    # 找到真正使用 NESTED_EXECUTABLES 的脚本后自动修复
+    grep -RIl 'NESTED_EXECUTABLES' "$DOCKER_DIR/hack" 2>/dev/null | while read -r f; do
+        echo ">>> Patching: $f"
+        sed -i '/cp.*NESTED_EXECUTABLES/{
+            /if \[ -n "\$NESTED_EXECUTABLES" \]/!s/^/# /
+        }' "$f"
+    done
+fi
 # 临时
 sed -i 's/6.12/6.18/g'  ./target/linux/x86/Makefile
 
