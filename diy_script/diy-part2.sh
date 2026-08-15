@@ -48,8 +48,16 @@ sed -i '/^\[ -n "\$\${IPKG_INSTROOT}" \] \|\| echo "0 4 \* \* \* \/etc\/coremark
 #dockerd
 sed -i '/containerd.installer/{s/^/# /}' ./feeds/packages/utils/dockerd/Makefile
 sed -i '/runc.installer/{s/^/# /}' ./feeds/packages/utils/dockerd/Makefile
-# dockerd 29.x 不生成 docker-proxy，删除安装步骤
-sed -i '/docker-proxy/d' ./feeds/packages/utils/dockerd/Makefile
+# dockerd 29.x docker-proxy fix
+DOCKER_MK=./feeds/packages/utils/dockerd/Makefile
+
+if grep -q './hack/make.sh binary' "$DOCKER_MK"; then
+    sed -i 's#./hack/make.sh binary#./hack/make.sh binary binary-proxy#g' "$DOCKER_MK"
+fi
+
+if grep -q 'bundles/binary-daemon/docker-proxy' "$DOCKER_MK"; then
+    sed -i 's#bundles/binary-daemon/docker-proxy#bundles/binary-proxy/docker-proxy#g' "$DOCKER_MK"
+fi
 
 #同步lede-xray
 cp ./feeds/helloworld/xray-core/Makefile ./feeds/packages/net/xray-core/Makefile
