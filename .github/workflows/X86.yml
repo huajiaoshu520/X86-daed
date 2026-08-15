@@ -271,9 +271,13 @@ jobs:
       run: |
         cd openwrt
 
-        echo -e "$(nproc) thread compile"
+        echo "=========================================="
+        echo "开始编译 OpenWrt"
+        echo "=========================================="
+        echo "$(nproc) thread compile"
 
-        make -j4 || make -j1 || make -j1 V=s
+        # 保留完整编译日志，方便定位 dockerd 问题
+        make -j4 V=s
 
         echo "status=success" >> $GITHUB_OUTPUT
 
@@ -284,6 +288,133 @@ jobs:
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
 
 
+    - name: dockerd失败诊断 # Debug dockerd build failure
+      if: failure() && steps.compile.outcome == 'failure'
+      run: |
+        cd openwrt
+
+        echo "=========================================="
+        echo "dockerd 构建失败，开始自动诊断"
+        echo "=========================================="
+
+        echo ""
+        echo "========== 1. 查找 dockerd 构建目录 =========="
+
+        DOCKER_DIR=$(find build_dir/target-x86_64_musl/ \
+          -maxdepth 1 \
+          -type d \
+          -name 'dockerd-*' \
+          | head -n 1)
+
+        echo "DOCKER_DIR=$DOCKER_DIR"
+
+        if [ -z "$DOCKER_DIR" ]; then
+          echo "没有找到 dockerd 构建目录！"
+          exit 0
+        fi
+
+
+        echo ""
+        echo "========== 2. dockerd 目录 =========="
+
+        ls -lah "$DOCKER_DIR" || true
+
+
+        echo ""
+        echo "========== 3. hack/make.sh =========="
+
+        if [ -f "$DOCKER_DIR/hack/make.sh" ]; then
+          grep -n -C 20 \
+            "Copying nested executables" \
+            "$DOCKER_DIR/hack/make.sh" || true
+        else
+          echo "找不到 hack/make.sh"
+        fi
+
+
+        echo ""
+        echo "========== 4. nested 相关代码 =========="
+
+        if [ -f "$DOCKER_DIR/hack/make.sh" ]; then
+          grep -n -C 10 \
+            "nested" \
+            "$DOCKER_DIR/hack/make.sh" || true
+        fi
+
+
+        echo ""
+        echo "========== 5. bundles 目录 =========="
+
+        if [ -d "$DOCKER_DIR/bundles" ]; then
+          find "$DOCKER_DIR/bundles" \
+            -maxdepth 4 \
+            \( -type f -o -type l \) \
+            -ls || true
+        else
+          echo "bundles 目录不存在"
+        fi
+
+
+        echo ""
+        echo "========== 6. binary-daemon =========="
+
+        if [ -d "$DOCKER_DIR/bundles/binary-daemon" ]; then
+          ls -lah "$DOCKER_DIR/bundles/binary-daemon/" || true
+        else
+          echo "binary-daemon 目录不存在"
+        fi
+
+
+        echo ""
+        echo "========== 7. 查找 nested executable =========="
+
+        find "$DOCKER_DIR" \
+          \( \
+            -name 'docker-proxy*' -o \
+            -name 'containerd*' -o \
+            -name 'runc*' -o \
+            -name 'tini*' \
+          \) \
+          -print 2>/dev/null || true
+
+
+        echo ""
+        echo "========== 8. dockerd Makefile =========="
+
+        grep -n -C 5 \
+          -E 'containerd|runc|tini|docker-proxy|nested|EnsureVendoredVersion' \
+          feeds/packages/utils/dockerd/Makefile || true
+
+
+        echo ""
+        echo "========== 9. containerd/runc/tini 目录 =========="
+
+        for pkg in containerd runc tini; do
+          echo ""
+          echo "----- $pkg -----"
+
+          if [ -d "feeds/packages/utils/$pkg" ]; then
+            ls -lah "feeds/packages/utils/$pkg/" || true
+          else
+            echo "feeds/packages/utils/$pkg 不存在"
+          fi
+        done
+
+
+        echo ""
+        echo "========== 10. Makefile 中 docker-proxy =========="
+
+        grep -n -C 10 \
+          "docker-proxy" \
+          feeds/packages/utils/dockerd/Makefile || true
+
+
+        echo ""
+        echo "=========================================="
+        echo "dockerd 诊断结束"
+        echo "=========================================="
+
+        exit 1
     - name: 检查空间使用情况 # Check space usage
       if: (!cancelled())
       run: |
