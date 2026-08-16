@@ -48,7 +48,8 @@ sed -i '/^\[ -n "\$\${IPKG_INSTROOT}" \] \|\| echo "0 4 \* \* \* \/etc\/coremark
 #dockerd
 sed -i '/containerd.installer/{s/^/# /}' ./feeds/packages/utils/dockerd/Makefile
 sed -i '/runc.installer/{s/^/# /}' ./feeds/packages/utils/dockerd/Makefile
-
+wget -O ./feeds/packages/utils/dockerd/Makefile \
+  https://raw.githubusercontent.com/openwrt/packages/master/utils/dockerd/Makefile
 #同步lede-xray
 cp ./feeds/helloworld/xray-core/Makefile ./feeds/packages/net/xray-core/Makefile
 
