@@ -5,7 +5,7 @@
 # This is free software, licensed under the MIT License.
 # See /LICENSE for more information.
 #
-# https://github.com/huajiaoshu520/X86-daed
+# https://github.com/huajiaoshu520/X86
 # File name: diy-part2.sh
 # Description: OpenWrt DIY script part 2 (After Update feeds)
 #
@@ -32,7 +32,8 @@ sed -i "s/DISTRIB_REVISION='R.*.*.[0-9]/& Compiled by Jason/" ./package/lean/def
 #./scripts/feeds install -a
 
 # 主题背景
-mkdir -p ./feeds/luci/themes/luci-theme-argon/htdocs/luci-static/argon/background/ && curl -o ./feeds/luci/themes/luci-theme-argon/htdocs/luci-static/argon/background/Network.mp4 https://raw.githubusercontent.com/huajiaoshu520/X86-daed/main/other/argon/video/default/Network.mp4
+mkdir -p ./feeds/luci/themes/luci-theme-argon/htdocs/luci-static/argon/background/ && curl -o ./feeds/luci/themes/luci-theme-argon/htdocs/luci-static/argon/background/Network.mp4 https://raw.githubusercontent.com/huajiaoshu520/X86/main/other/argon/video/default/Network.mp4
+
 
 # 临时
 sed -i 's/6.12/6.18/g'  ./target/linux/x86/Makefile
@@ -46,10 +47,6 @@ sed -i '/^echo "0 4 \* \* \* \/etc\/coremark.sh" >> \/etc\/crontabs\/root$/d' ./
 sed -i '/^\[ -n "\$\${IPKG_INSTROOT}" \] \|\| echo "0 4 \* \* \* \/etc\/coremark.sh" >> \/etc\/crontabs\/root$/d' ./feeds/packages/utils/coremark/Makefile
 
 #dockerd
-wget -O ./feeds/packages/utils/dockerd/Makefile \
-  https://raw.githubusercontent.com/openwrt/packages/master/utils/dockerd/Makefile
-sed -i '/EnsureVendoredVersion,containerd/s/^/# /' ./feeds/packages/utils/dockerd/Makefile
-sed -i '/EnsureVendoredVersion,runc/s/^/# /' ./feeds/packages/utils/dockerd/Makefile
 sed -i '/containerd.installer/{s/^/# /}' ./feeds/packages/utils/dockerd/Makefile
 sed -i '/runc.installer/{s/^/# /}' ./feeds/packages/utils/dockerd/Makefile
 
