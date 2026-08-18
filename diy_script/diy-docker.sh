@@ -30,3 +30,5 @@ sed -i -e 's/29.1.1/29.7.2/g' \
 sed -i -e 's/29.1.1/29.7.2/g' \
        -e 's/a02081b7d6fb10bfbc8afb621e7edc5124048b31eea7a1ab73c7ccd924b03a66/225b7ab2a15f5230b482df8461069cd4bce38891266fb9898d4188d0a3cbf54a/g' \
        -e 's/0aedba5/a7dcaa6/g' ./feeds/packages/utils/docker/Makefile
+wget -O ./feeds/packages/utils/dockerd/patches/001-skip-copy-nested-binaries.patch \
+  https://raw.githubusercontent.com/AndyChiang888/packages/dockerd/utils/dockerd/patches/001-skip-copy-nested-binaries.patch
