@@ -32,5 +32,5 @@ rm -rf package/kernel/bpf-headers
 git clone https://github.com/huajiaoshu520/bpf-headers ./package/kernel/bpf-headers
 
 # config
-wget -O /target/linux/generic/config-6.18 \
+wget -O ./target/linux/generic/config-6.18 \
   https://raw.githubusercontent.com/huajiaoshu520/X86-daed/refs/heads/main/diy_script/config-6.18
