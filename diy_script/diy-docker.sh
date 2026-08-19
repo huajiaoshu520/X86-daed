@@ -31,8 +31,33 @@ sed -i -e 's/29.1.1/29.7.2/g' \
        -e 's/a02081b7d6fb10bfbc8afb621e7edc5124048b31eea7a1ab73c7ccd924b03a66/225b7ab2a15f5230b482df8461069cd4bce38891266fb9898d4188d0a3cbf54a/g' \
        -e 's/0aedba5/a7dcaa6/g' ./feeds/packages/utils/docker/Makefile
 
-#补丁      
+# 禁用
+sed -i '/containerd.installer/{s/^/# /}' ./feeds/packages/utils/dockerd/Makefile
+sed -i '/runc.installer/{s/^/# /}' ./feeds/packages/utils/dockerd/Makefile
+# 补丁      
 mkdir -p ./feeds/packages/utils/dockerd/patches
-
 wget -O ./feeds/packages/utils/dockerd/patches/001-skip-copy-nested-binaries.patch \
   https://raw.githubusercontent.com/huajiaoshu520/X86-daed/refs/heads/main/dockerd/patches/001-skip-copy-nested-binaries.patch
+
+# fw4 docker
+mkdir -p package/base-files/files/etc/docker
+
+cat > package/base-files/files/etc/docker/daemon.json <<'EOF'
+{
+    "data-root": "/mnt/nvme0n1p1/docker",
+    "log-level": "warn",
+    "iptables": false,
+    "firewall-backend": "nftables",
+    "hosts": [
+        "unix:///var/run/docker.sock"
+    ]
+}
+EOF
+
+mkdir -p package/base-files/files/etc/config
+
+cat > package/base-files/files/etc/config/dockerd <<'EOF'
+config globals 'globals'
+        option iptables '0'
+        option alt_config_file '/etc/docker/daemon.json'
+EOF
