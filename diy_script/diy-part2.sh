@@ -34,7 +34,6 @@ sed -i "s/DISTRIB_REVISION='R.*.*.[0-9]/& Compiled by Jason/" ./package/lean/def
 # 主题背景
 mkdir -p ./feeds/luci/themes/luci-theme-argon/htdocs/luci-static/argon/background/ && curl -o ./feeds/luci/themes/luci-theme-argon/htdocs/luci-static/argon/background/Network.mp4 https://raw.githubusercontent.com/huajiaoshu520/X86/main/other/argon/video/default/Network.mp4
 
-
 # 临时
 sed -i 's/6.12/6.18/g'  ./target/linux/x86/Makefile
 
@@ -46,32 +45,6 @@ sed -i 's/PKG_VERSION:=2.17.8/PKG_VERSION:=2.27.2/g' ./feeds/packages/net/lucky/
 sed -i '/^echo "0 4 \* \* \* \/etc\/coremark.sh" >> \/etc\/crontabs\/root$/d' ./feeds/packages/utils/coremark/coremark
 sed -i '/^\[ -n "\$\${IPKG_INSTROOT}" \] \|\| echo "0 4 \* \* \* \/etc\/coremark.sh" >> \/etc\/crontabs\/root$/d' ./feeds/packages/utils/coremark/Makefile
 
-#dockerd
-sed -i '/containerd.installer/{s/^/# /}' ./feeds/packages/utils/dockerd/Makefile
-sed -i '/runc.installer/{s/^/# /}' ./feeds/packages/utils/dockerd/Makefile
-
 #同步lede-xray
 cp ./feeds/helloworld/xray-core/Makefile ./feeds/packages/net/xray-core/Makefile
 
-# fw4 docker
-mkdir -p package/base-files/files/etc/docker
-
-cat > package/base-files/files/etc/docker/daemon.json <<'EOF'
-{
-    "data-root": "/mnt/nvme0n1p1/docker",
-    "log-level": "warn",
-    "iptables": false,
-    "firewall-backend": "nftables",
-    "hosts": [
-        "unix:///var/run/docker.sock"
-    ]
-}
-EOF
-
-mkdir -p package/base-files/files/etc/config
-
-cat > package/base-files/files/etc/config/dockerd <<'EOF'
-config globals 'globals'
-        option iptables '0'
-        option alt_config_file '/etc/docker/daemon.json'
-EOF
