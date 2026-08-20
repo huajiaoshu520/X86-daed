@@ -31,4 +31,3 @@ cp ./include/kernel-6.18 ./target/linux/generic
 rm -rf package/kernel/bpf-headers
 git clone https://github.com/huajiaoshu520/bpf-headers ./package/kernel/bpf-headers
 
-sed -i 's/DEFAULT:=y if IPTABLES_CONNLABEL/DEFAULT:=n/' package/network/utils/iptables/Makefile
