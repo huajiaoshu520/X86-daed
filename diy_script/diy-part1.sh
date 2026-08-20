@@ -31,3 +31,5 @@ cp ./include/kernel-6.18 ./target/linux/generic
 rm -rf package/kernel/bpf-headers
 git clone https://github.com/huajiaoshu520/bpf-headers ./package/kernel/bpf-headers
 
+# 取消iptables
+sed -i 's/iptables-mod-tproxy iptables-mod-extra iptables //g; s/iptables-mod-tproxy iptables-mod-extra //g' include/target.mk
