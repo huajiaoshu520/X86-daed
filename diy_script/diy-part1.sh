@@ -32,4 +32,4 @@ rm -rf package/kernel/bpf-headers
 git clone https://github.com/huajiaoshu520/bpf-headers ./package/kernel/bpf-headers
 
 # 取消iptables
-sed -i 's/iptables-mod-tproxy iptables-mod-extra iptables //g; s/iptables-mod-tproxy iptables-mod-extra //g' include/target.mk
+sed -i -E 's/[[:space:]]iptables-mod-tproxy([[:space:]]|$)/\1/g; s/[[:space:]]iptables-mod-extra([[:space:]]|$)/\1/g; s/[[:space:]]iptables([[:space:]]|$)/\1/g' ./include/target.mk
