@@ -32,7 +32,7 @@
        -e 's/8900f1d/a7dcaa6/g' ./feeds/packages/utils/docker/Makefile
 
 # 禁用
-sed -i -e '\|$(call EnsureVendoredVersion,containerd)|{s/^/# /}' \
+#sed -i -e '\|$(call EnsureVendoredVersion,containerd)|{s/^/# /}' \
        -e '\|$(call EnsureVendoredVersion,runc)|{s/^/# /}' \
        ./feeds/packages/utils/dockerd/Makefile
 # 补丁      
