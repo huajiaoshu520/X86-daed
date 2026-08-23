@@ -21,15 +21,15 @@
 # dockerd
 # wget https://codeload.github.com/moby/moby/tar.gz/docker-v29.7.2
 # sha256sum docker-v29.7.2
-sed -i -e 's/29.1.1/29.7.2/g' \
-       -e 's/65221f1c70feb1bd1562bb1017b586e4528be877656dc16f5be5659fc9b7e522/3a93a88bff41ffa6f4dca9f4ed9fc05e7fdb08e0f9014cf1d8177f85ecbc0683/g' \
-       -e 's/9a84135/6a43e3d/g' ./feeds/packages/utils/dockerd/Makefile
+sed -i -e 's/29.6.1/29.7.2/g' \
+       -e 's/a97bd870c4b072b7d9cc053b2a806ca3d920f192f9dc6a662e17c1b69f56f2e1/3a93a88bff41ffa6f4dca9f4ed9fc05e7fdb08e0f9014cf1d8177f85ecbc0683/g' \
+       -e 's/8ec5ab3/6a43e3d/g' ./feeds/packages/utils/dockerd/Makefile
 
 # docker
 # wget https://codeload.github.com/docker/cli/tar.gz/v29.7.2
-sed -i -e 's/29.1.1/29.7.2/g' \
-       -e 's/a02081b7d6fb10bfbc8afb621e7edc5124048b31eea7a1ab73c7ccd924b03a66/225b7ab2a15f5230b482df8461069cd4bce38891266fb9898d4188d0a3cbf54a/g' \
-       -e 's/0aedba5/a7dcaa6/g' ./feeds/packages/utils/docker/Makefile
+sed -i -e 's/29.6.1/29.7.2/g' \
+       -e 's/74d14dd212b07cd3328989dc6a029dde2ebbe6a878199eaaafad54916f456194/225b7ab2a15f5230b482df8461069cd4bce38891266fb9898d4188d0a3cbf54a/g' \
+       -e 's/8900f1d/a7dcaa6/g' ./feeds/packages/utils/docker/Makefile
 
 # 禁用
 sed -i '/containerd.installer/{s/^/# /}' ./feeds/packages/utils/dockerd/Makefile
