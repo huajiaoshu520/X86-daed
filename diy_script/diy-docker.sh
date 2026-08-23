@@ -32,8 +32,9 @@ sed -i -e 's/29.6.1/29.7.2/g' \
        -e 's/8900f1d/a7dcaa6/g' ./feeds/packages/utils/docker/Makefile
 
 # 禁用
-sed -i '/containerd.installer/{s/^/# /}' ./feeds/packages/utils/dockerd/Makefile
-sed -i '/runc.installer/{s/^/# /}' ./feeds/packages/utils/dockerd/Makefile
+sed -i -e '\|$(call EnsureVendoredVersion,containerd)|{s/^/# /}' \
+       -e '\|$(call EnsureVendoredVersion,runc)|{s/^/# /}' \
+       ./feeds/packages/utils/dockerd/Makefile
 # 补丁      
 #mkdir -p ./feeds/packages/utils/dockerd/patches
 #wget -O ./feeds/packages/utils/dockerd/patches/001-skip-copy-nested-binaries.patch \
