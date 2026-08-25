@@ -26,11 +26,6 @@ env:
   REPO_URL_HelloWorld: https://github.com/fw876/helloworld
   REPO_BRANCH_HelloWorld: dev
   REPO_PATH_HelloWorld : "helloworld"
-
-   # istore源码
-  REPO_URL_istore: https://github.com/linkease/istore
-  REPO_BRANCH_istore: main
-  REPO_PATH_istore : "istore"
   
    # daed源码
   REPO_URL_daed: https://github.com/kenzok8/openwrt-daede
@@ -77,11 +72,6 @@ jobs:
         echo "commitHash_HelloWorld=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
         cd
 
-        git clone --depth 1 $REPO_URL_istore -b $REPO_BRANCH_istore $REPO_PATH_istore 
-        cd $REPO_PATH_istore
-        echo "commitHash_istore=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
-        cd
-
         git clone --depth 1 $REPO_URL_daed -b $REPO_BRANCH_daed $REPO_PATH_daed 
         cd $REPO_PATH_daed
         echo "commitHash_daed=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
@@ -95,7 +85,6 @@ jobs:
         echo "commitHash_Lede_Package: ${{ steps.getHash.outputs.commitHash_Lede_Package }}"
         echo "commitHash_Lede_Luci: ${{ steps.getHash.outputs.commitHash_Lede_Luci }}"
         echo "commitHash_HelloWorld: ${{ steps.getHash.outputs.commitHash_HelloWorld }}"
-        echo "commitHash_istore: ${{ steps.getHash.outputs.commitHash_istore }}"
         echo "commitHash_daed: ${{ steps.getHash.outputs.commitHash_daed }}"        
         echo "commitHash_All=\
           ${{steps.getHash.outputs.commitHash_huajiaoshu520X86daed}}\
@@ -103,7 +92,6 @@ jobs:
           ${{steps.getHash.outputs.commitHash_Lede_Package}}\
           ${{steps.getHash.outputs.commitHash_Lede_Luci}}\
           ${{steps.getHash.outputs.commitHash_HelloWorld}}\
-          ${{steps.getHash.outputs.commitHash_istore}}\
           ${{steps.getHash.outputs.commitHash_daed}}" >> $GITHUB_OUTPUT
           
     - name: 比较提交散列 #Compare Commit Hash
@@ -122,7 +110,6 @@ jobs:
         echo ${{ steps.getHash.outputs.commitHash_Lede_Package }} | tee .commitHash_Lede_Package
         echo ${{ steps.getHash.outputs.commitHash_Lede_Luci }} | tee .commitHash_Lede_Luci
         echo ${{ steps.getHash.outputs.commitHash_HelloWorld }} | tee .commitHash_HelloWorld
-        echo ${{ steps.getHash.outputs.commitHash_istore }} | tee .commitHash_istore
         echo ${{ steps.getHash.outputs.commitHash_daed }} | tee .commitHash_daed
         echo ${{ steps.combHeader.outputs.commitHash_All }} | tee .commitHash_All
 
