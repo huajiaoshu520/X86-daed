@@ -47,3 +47,22 @@ sed -i '/^\[ -n "\$\${IPKG_INSTROOT}" \] \|\| echo "0 4 \* \* \* \/etc\/coremark
 
 #同步lede-xray
 cp ./feeds/helloworld/xray-core/Makefile ./feeds/packages/net/xray-core/Makefile
+
+#自动挂在
+# NVMe 自动挂载
+mkdir -p files/etc/config
+
+cat > files/etc/config/fstab <<'EOF'
+config global
+    option anon_swap '0'
+    option anon_mount '0'
+    option auto_swap '1'
+    option auto_mount '1'
+    option delay_root '5'
+    option check_fs '0'
+
+config mount
+	option target '/mnt/nvme0n1p1'
+	option uuid 'b3b41f9e-49d4-41d8-b517-965af8d385e6'
+	option enabled '1'
+EOF
