@@ -59,6 +59,14 @@ mkdir -p package/base-files/files/etc/config
 
 cat > package/base-files/files/etc/config/dockerd <<'EOF'
 config globals 'globals'
+        option log_level 'warn'
         option iptables '0'
         option alt_config_file '/etc/docker/daemon.json'
+        option data_root '/mnt/nvme0n1p1/docker'
+        list hosts 'unix:///var/run/docker.sock'
+        option _luci_lan 'lan'
+
+config firewall 'firewall'
+        option device 'docker0'
+        list blocked_interfaces 'wan'
 EOF
