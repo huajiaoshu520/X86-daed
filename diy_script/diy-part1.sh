@@ -22,8 +22,8 @@ echo "src-git helloworld https://github.com/fw876/helloworld;dev" >> "feeds.conf
 echo "src-git daed https://github.com/kenzok8/openwrt-daede" >> "feeds.conf.default"
 
 #daed
-#curl -L https://raw.githubusercontent.com/huajiaoshu520/X86-daed/refs/heads/main/daed/patches/llvm-bpf/Makefile -o tools/llvm-bpf/Makefile
-#curl -L https://raw.githubusercontent.com/huajiaoshu520/X86-daed/refs/heads/main/daed/patches/bpf.mk -o include/bpf.mk
+curl -L https://raw.githubusercontent.com/huajiaoshu520/X86-daed/refs/heads/main/daed/patches/llvm-bpf/Makefile -o tools/llvm-bpf/Makefile
+curl -L https://raw.githubusercontent.com/huajiaoshu520/X86-daed/refs/heads/main/daed/patches/bpf.mk -o include/bpf.mk
 
 #修改daed编译内核
 cp ./include/kernel-6.18 ./target/linux/x86/generic
