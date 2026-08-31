@@ -20,7 +20,6 @@ sed -i 's/IMG_PREFIX:=/IMG_PREFIX:=$(LINUX_VERSION)-/g' include/image.mk
 #echo "src-git helloworld https://github.com/Jason6111/helloworld;dev" >> "feeds.conf.default"
 echo "src-git helloworld https://github.com/fw876/helloworld;dev" >> "feeds.conf.default"
 echo "src-git daed https://github.com/kenzok8/openwrt-daede" >> "feeds.conf.default"
-echo "src-git quickstart https://github.com/huajiaoshu520/quickstart" >> "feeds.conf.default"
 
 #daed
 #curl -L https://raw.githubusercontent.com/huajiaoshu520/X86-daed/refs/heads/main/daed/patches/llvm-bpf/Makefile -o tools/llvm-bpf/Makefile
