@@ -18,7 +18,7 @@ sed -i 's/IMG_PREFIX:=/IMG_PREFIX:=$(LINUX_VERSION)-/g' include/image.mk
 # Add a feed source
 #sed -i 's/23\.05/25.12/g' feeds.conf.default
 #echo "src-git helloworld https://github.com/Jason6111/helloworld;dev" >> "feeds.conf.default"
-echo "src-git helloworld https://github.com/fw876/helloworld;dev" >> "feeds.conf.default"
+#echo "src-git helloworld https://github.com/fw876/helloworld;dev" >> "feeds.conf.default"
 echo "src-git daed https://github.com/kenzok8/openwrt-daede" >> "feeds.conf.default"
 
 #daed
