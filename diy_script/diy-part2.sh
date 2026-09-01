@@ -27,6 +27,7 @@ sed -i '/$1$V4UetPzk$CYXluq4wUazHjmCDBCqXF./ d' ./package/lean/default-settings/
 
 # ID
 sed -i "s/DISTRIB_REVISION='R.*.*.[0-9]/& Compiled by Jason/" ./package/lean/default-settings/files/zzz-default-settings
+sed -i 's/^BUILD_ID=".*"/BUILD_ID="%R Compiled by Jason"/' ./package/base-files/files/usr/lib/os-release
 #rm -rf feeds/packages/net/shadowsocks-libev
 #./scripts/feeds update -a
 #./scripts/feeds install -a
