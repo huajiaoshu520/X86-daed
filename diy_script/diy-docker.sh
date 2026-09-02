@@ -38,7 +38,7 @@ sed -i -e '\|$(call EnsureVendoredVersion,containerd)|{s/^/# /}' \
 # 补丁      
 mkdir -p ./feeds/packages/utils/dockerd/patches
 wget -O ./feeds/packages/utils/dockerd/patches/001-skip-copy-nested-binaries.patch \
-  https://raw.githubusercontent.com/huajiaoshu520/X86-daed/refs/heads/main/dockerd/patches/001-skip-copy-nested-binaries.patch
+  https://raw.githubusercontent.com/huajiaoshu520/X86-daed/refs/heads/main/patches/dockerd/patches/001-skip-copy-nested-binaries.patch
 
 # fw4 docker
 mkdir -p package/base-files/files/etc/docker
