@@ -34,3 +34,7 @@ git clone https://github.com/huajiaoshu520/bpf-headers ./package/kernel/bpf-head
 
 # 取消iptables
 sed -i -E 's/[[:space:]]iptables-mod-tproxy([[:space:]]|$)/\1/g; s/[[:space:]]iptables-mod-extra([[:space:]]|$)/\1/g; s/[[:space:]]iptables([[:space:]]|$)/\1/g' ./include/target.mk
+
+# 临时
+wget -O ./tools/gunlib \
+  https://github.com/huajiaoshu520/X86-daed/tree/main/patches/gunlib
