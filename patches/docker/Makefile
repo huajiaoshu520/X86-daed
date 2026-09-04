@@ -1,4 +1,3 @@
-```makefile
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=docker
@@ -164,4 +163,3 @@ define Package/docker/install
 endef
 
 $(eval $(call BuildPackage,docker))
-```
