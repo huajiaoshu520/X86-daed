@@ -1,0 +1,167 @@
+```makefile
+include $(TOPDIR)/rules.mk
+
+PKG_NAME:=docker
+PKG_VERSION:=29.8.0
+PKG_RELEASE:=1
+PKG_LICENSE:=Apache-2.0
+PKG_LICENSE_FILES:=LICENSE
+
+PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
+PKG_GIT_URL:=github.com/docker/cli
+PKG_GIT_REF:=v$(PKG_VERSION)
+PKG_SOURCE_URL:=https://codeload.$(PKG_GIT_URL)/tar.gz/$(PKG_GIT_REF)?
+PKG_HASH:=c5fadbc00c02dbecb1b7c9936e188baf9c80421a9107e7e9ad36a0923a0fc764
+PKG_GIT_SHORT_COMMIT:=88096ef
+
+PKG_MAINTAINER:=Gerard Ryan <G.M0N3Y.2503@gmail.com>
+
+PKG_BUILD_DEPENDS:=golang/host dockerd
+PKG_BUILD_PARALLEL:=1
+
+GO_PKG:=$(PKG_GIT_URL)
+
+include $(INCLUDE_DIR)/package.mk
+include ../../lang/golang/golang-package.mk
+
+EMPTY:=
+SPACE:=$(EMPTY) $(EMPTY)
+
+ARCH_DEPENDS:=@($(subst $(SPACE),||,$(strip $(filter-out mips mips64 mipsel mips64el,$(subst ||,$(SPACE),$(patsubst @(%),%,$(GO_ARCH_DEPENDS)))))))
+
+define Package/docker
+	SECTION:=utils
+	CATEGORY:=Utilities
+	TITLE:=Docker Community Edition CLI
+	URL:=https://www.docker.com/
+	DEPENDS:=$(ARCH_DEPENDS)
+endef
+
+define Package/docker/description
+	The CLI used in the Docker CE and Docker EE products.
+endef
+
+GO_PKG_INSTALL_EXTRA:=\
+	cli/compose/schema/data \
+	vendor/google.golang.org/protobuf/internal/editiondefaults/editions_defaults.binpb
+
+TAR_OPTIONS:=--strip-components 1 $(TAR_OPTIONS)
+TAR_CMD=$(HOST_TAR) -C $(1) $(TAR_OPTIONS)
+
+TARGET_LDFLAGS += $(if $(CONFIG_USE_GLIBC),-lc -lgcc)
+
+# Verify PKG_GIT_SHORT_COMMIT
+
+define Build/Prepare
+	$(Build/Prepare/Default)
+	EXPECTED_PKG_GIT_SHORT_COMMIT=$$$$( $(CURDIR)/../dockerd/git-short-commit.sh '$(PKG_GIT_URL)' '$(PKG_GIT_REF)' '$(TMP_DIR)/git-short-commit/$(PKG_NAME)-$(PKG_VERSION)' ); \
+	if [ "$$$${EXPECTED_PKG_GIT_SHORT_COMMIT}" != "$(strip $(PKG_GIT_SHORT_COMMIT))" ]; then \
+		echo "ERROR: Expected 'PKG_GIT_SHORT_COMMIT:=$$$${EXPECTED_PKG_GIT_SHORT_COMMIT}', found 'PKG_GIT_SHORT_COMMIT:=$(strip $(PKG_GIT_SHORT_COMMIT))'"; \
+		exit 1; \
+	fi
+endef
+
+# Docker CLI 29.8.0 jsonschema/v6 fix
+#
+# Docker CLI 29.8.0 uses:
+#
+# github.com/santhosh-tekuri/jsonschema/v6
+#
+# loader.go contains:
+#
+# //go:embed metaschemas
+#
+# OpenWrt's .go_work vendor tree may miss the metaschemas directory.
+# Restore it from the Go module cache before scripts/build/binary runs.
+
+define Build/PrepareJsonschema
+	@echo "===> Docker CLI 29.8.0: checking jsonschema/v6 metaschemas"; \
+	WORKDIR="$(PKG_BUILD_DIR)/.go_work/build/src/github.com/docker/cli"; \
+	JSONSCHEMA_DIR="$$WORKDIR/vendor/github.com/santhosh-tekuri/jsonschema/v6"; \
+	METASCHEMA_DIR="$$JSONSCHEMA_DIR/metaschemas"; \
+	\
+	echo "===> Vendor path: $$JSONSCHEMA_DIR"; \
+	\
+	if [ -d "$$METASCHEMA_DIR" ] && \
+	   [ -n "$$(find "$$METASCHEMA_DIR" -type f -print -quit 2>/dev/null)" ]; then \
+		echo "===> metaschemas already exists."; \
+	else \
+		echo "===> metaschemas is missing."; \
+		echo "===> Preparing jsonschema/v6 module cache..."; \
+		\
+		cd "$(PKG_BUILD_DIR)" && \
+		PATH="$(STAGING_DIR_HOSTPKG)/lib/go-$(GO_HOST_VERSION)/bin:$$PATH" \
+		GOENV=off \
+		GOTOOLCHAIN=local \
+		go mod download; \
+		\
+		GOMODCACHE_DIR="$$( \
+			PATH="$(STAGING_DIR_HOSTPKG)/lib/go-$(GO_HOST_VERSION)/bin:$$PATH" \
+			GOENV=off \
+			GOTOOLCHAIN=local \
+			go env GOMODCACHE \
+		)"; \
+		\
+		echo "===> GOMODCACHE: $$GOMODCACHE_DIR"; \
+		\
+		SRC="$$(find "$$GOMODCACHE_DIR" \
+			-type d \
+			-path '*/github.com/santhosh-tekuri/jsonschema/v6@*' \
+			-print \
+			-quit 2>/dev/null)"; \
+		\
+		if [ -z "$$SRC" ]; then \
+			echo "ERROR: github.com/santhosh-tekuri/jsonschema/v6 module not found."; \
+			echo "===> Searching jsonschema modules:"; \
+			find "$$GOMODCACHE_DIR" \
+				-type d \
+				-path '*santhosh-tekuri*jsonschema*' \
+				-print 2>/dev/null | head -100 || true; \
+			exit 1; \
+		fi; \
+		\
+		echo "===> Found jsonschema/v6 module:"; \
+		echo "$$SRC"; \
+		\
+		if [ ! -d "$$SRC/metaschemas" ]; then \
+			echo "ERROR: metaschemas directory not found in:"; \
+			echo "$$SRC"; \
+			exit 1; \
+		fi; \
+		\
+		echo "===> Restoring metaschemas into OpenWrt .go_work vendor tree..."; \
+		mkdir -p "$$JSONSCHEMA_DIR"; \
+		rm -rf "$$METASCHEMA_DIR"; \
+		cp -a "$$SRC/metaschemas" "$$JSONSCHEMA_DIR/"; \
+		\
+		echo "===> metaschemas restored."; \
+	fi; \
+	\
+	echo "===> Final jsonschema/v6 check:"; \
+	find "$$METASCHEMA_DIR" -type f -print; \
+	\
+	if [ -z "$$(find "$$METASCHEMA_DIR" -type f -print -quit 2>/dev/null)" ]; then \
+		echo "ERROR: jsonschema/v6 metaschemas is empty."; \
+		exit 1; \
+	fi; \
+	\
+	echo "===> Docker CLI 29.8.0 jsonschema fix OK."
+endef
+
+define Build/Compile
+	$(Build/PrepareJsonschema)
+	cd $(PKG_BUILD_DIR); \
+	$(GO_PKG_VARS) \
+	GITCOMMIT=$(PKG_GIT_SHORT_COMMIT) \
+	VERSION=$(PKG_VERSION) \
+	TARGET=$(PKG_BUILD_DIR)/build \
+	./scripts/build/binary
+endef
+
+define Package/docker/install
+	$(INSTALL_DIR) $(1)/usr/bin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/build/docker $(1)/usr/bin/
+endef
+
+$(eval $(call BuildPackage,docker))
+```
