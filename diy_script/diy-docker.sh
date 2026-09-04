@@ -39,7 +39,8 @@ sed -i -e '\|$(call EnsureVendoredVersion,containerd)|{s/^/# /}' \
 mkdir -p ./feeds/packages/utils/dockerd/patches
 wget -O ./feeds/packages/utils/dockerd/patches/001-skip-copy-nested-binaries.patch \
   https://raw.githubusercontent.com/huajiaoshu520/X86-daed/refs/heads/main/patches/dockerd/patches/001-skip-copy-nested-binaries.patch
-
+wget -O ./feeds/packages/utils/docker/Makefile \
+  https://raw.githubusercontent.com/kenzok8/small-package/refs/heads/main/docker/Makefile
 # fw4 docker
 mkdir -p package/base-files/files/etc/docker
 
@@ -70,116 +71,3 @@ config firewall 'firewall'
         option device 'docker0'
         list blocked_interfaces 'wan'
 EOF
-
-DOCKER_MAKEFILE="./feeds/packages/utils/docker/Makefile"
-
-if [ -f "$DOCKER_MAKEFILE" ]; then
-
-    echo "Installing Docker CLI 29.8.0 jsonschema fix..."
-
-    sed -i \
-        '/# OPENWRT_DOCKER_JSONSCHEMA_FIX_V6/,/^endef$/d' \
-        "$DOCKER_MAKEFILE" 2>/dev/null || true
-
-    cat >> "$DOCKER_MAKEFILE" <<'EOF'
-
-define Build/PrepareDockerJsonschema
-	@echo "===> Docker CLI 29.8.0 jsonschema/v6 fix"; \
-	WORKDIR="$(PKG_BUILD_DIR)/.go_work/build/src/github.com/docker/cli"; \
-	JSONSCHEMA_DIR="$$WORKDIR/vendor/github.com/santhosh-tekuri/jsonschema/v6"; \
-	echo "===> Checking: $$JSONSCHEMA_DIR/metaschemas"; \
-	\
-	if [ -d "$$JSONSCHEMA_DIR/metaschemas" ] && \
-	   [ -n "$$(find "$$JSONSCHEMA_DIR/metaschemas" -type f -print -quit 2>/dev/null)" ]; then \
-		echo "===> metaschemas already exists."; \
-	else \
-		echo "===> metaschemas is missing."; \
-		echo "===> Running go mod download..."; \
-		cd "$(PKG_BUILD_DIR)" && go mod download; \
-		\
-		GOMODCACHE_DIR="$$(go env GOMODCACHE)"; \
-		echo "===> GOMODCACHE: $$GOMODCACHE_DIR"; \
-		\
-		SRC="$$(find "$$GOMODCACHE_DIR" \
-			-type d \
-			-path '*/github.com/santhosh-tekuri/jsonschema/v6@*' \
-			-print \
-			-quit 2>/dev/null)"; \
-		\
-		if [ -z "$$SRC" ]; then \
-			SRC="$$(find "$$GOMODCACHE_DIR" \
-				-type d \
-				-path '*santhosh-tekuri/jsonschema/v6*' \
-				-print \
-				-quit 2>/dev/null)"; \
-		fi; \
-		\
-		if [ -z "$$SRC" ]; then \
-			echo "ERROR: jsonschema/v6 module not found."; \
-			find "$$GOMODCACHE_DIR" \
-				-type d \
-				-path '*jsonschema*' \
-				-print 2>/dev/null | head -100 || true; \
-			exit 1; \
-		fi; \
-		\
-		echo "===> Found jsonschema module:"; \
-		echo "$$SRC"; \
-		\
-		if [ ! -d "$$SRC/metaschemas" ]; then \
-			echo "ERROR: metaschemas directory not found in:"; \
-			echo "$$SRC"; \
-			exit 1; \
-		fi; \
-		\
-		echo "===> Copying metaschemas to actual Docker CLI vendor tree..."; \
-		mkdir -p "$$JSONSCHEMA_DIR"; \
-		rm -rf "$$JSONSCHEMA_DIR/metaschemas"; \
-		cp -a "$$SRC/metaschemas" "$$JSONSCHEMA_DIR/"; \
-		\
-		echo "===> metaschemas restored."; \
-	fi; \
-	\
-	echo "===> Final metaschemas check:"; \
-	find "$$JSONSCHEMA_DIR/metaschemas" -type f -print; \
-	\
-	if [ -z "$$(find "$$JSONSCHEMA_DIR/metaschemas" -type f -print -quit 2>/dev/null)" ]; then \
-		echo "ERROR: metaschemas directory is empty."; \
-		exit 1; \
-	fi; \
-	\
-	echo "===> Docker CLI 29.8.0 jsonschema fix completed."
-
-endef
-
-EOF
-
-    if grep -q '^define Build/Compile' "$DOCKER_MAKEFILE"; then
-
-        if grep -q '$(Build/PrepareDockerJsonschema)' "$DOCKER_MAKEFILE"; then
-            echo "===> jsonschema Build/Compile hook already exists."
-        else
-
-            sed -i \
-                '/^define Build\/Compile$/a\
-\t$(Build/PrepareDockerJsonschema)' \
-                "$DOCKER_MAKEFILE"
-
-            echo "===> jsonschema Build/Compile hook installed."
-
-        fi
-
-    else
-
-        echo "ERROR: define Build/Compile not found in Docker Makefile."
-        exit 1
-
-    fi
-
-else
-
-    echo "ERROR: Docker Makefile not found:"
-    echo "$DOCKER_MAKEFILE"
-    exit 1
-
-fi
