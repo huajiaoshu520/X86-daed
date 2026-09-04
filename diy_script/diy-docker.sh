@@ -1,5 +1,6 @@
 ```bash
 #!/bin/bash
+
 #
 # Copyright (c) 2019-2025 huajiaoshu520
 #
@@ -36,10 +37,15 @@ sed -i \
 # docker
 # ============================================================
 
-# wget https://codeload.github.com/docker/cli/tar.gz/v29.7.2
-# sha256sum docker-v29.7.2
-
 DOCKER_MAKEFILE="./feeds/packages/utils/docker/Makefile"
+
+if [ ! -f "$DOCKER_MAKEFILE" ]; then
+    echo "============================================================"
+    echo " ERROR: Docker Makefile not found!"
+    echo " $DOCKER_MAKEFILE"
+    echo "============================================================"
+    exit 1
+fi
 
 sed -i \
     -e 's/29.6.1/29.8.0/g' \
@@ -49,53 +55,65 @@ sed -i \
 
 
 # ============================================================
-# Docker CLI 29.8.0
+# Docker CLI 29.8.0 jsonschema/v6 metaschemas 修复
+# ============================================================
 #
-# Fix:
+# Docker CLI 29.8.0 编译时：
 #
-# .go_work/build/src/github.com/docker/cli/vendor/
-# github.com/santhosh-tekuri/jsonschema/v6
+# vendor/github.com/santhosh-tekuri/jsonschema/v6/loader.go
 #
-# loader.go:
+# 使用：
 #
-#     //go:embed metaschemas
+# //go:embed metaschemas
 #
-# Error:
+# 如果 Docker CLI 的实际 .go_work vendor 目录缺少 metaschemas，
+# 会出现：
 #
-#     pattern metaschemas: no matching files found
+# pattern metaschemas: no matching files found
+#
+# 注意：
+# OpenWrt Docker package 实际编译使用的是：
+#
+# .go_work/build/src/github.com/docker/cli/vendor/...
+#
+# 而不是简单的：
+#
+# $(PKG_BUILD_DIR)/vendor/...
+#
+# 因此必须在 Build/Compile 阶段修复实际使用的 vendor。
 #
 # ============================================================
 
-if [ -f "$DOCKER_MAKEFILE" ]; then
+echo "===> Installing Docker CLI jsonschema/v6 fix..."
 
-    echo "============================================================"
-    echo " Installing Docker CLI jsonschema/v6 fix..."
-    echo "============================================================"
+# ------------------------------------------------------------
+# 删除旧版本修复，防止重复注入
+# ------------------------------------------------------------
 
-    # --------------------------------------------------------
-    # 删除之前可能安装过的旧版本修复
-    # --------------------------------------------------------
+sed -i '/# OPENWRT_DOCKER_JSONSCHEMA_FIX_V1/,/^endef$/d' \
+    "$DOCKER_MAKEFILE" 2>/dev/null || true
 
-    sed -i '/# OPENWRT_DOCKER_JSONSCHEMA_FIX_V1/,/^endef$/d' \
-        "$DOCKER_MAKEFILE" 2>/dev/null || true
+sed -i '/# OPENWRT_DOCKER_JSONSCHEMA_FIX_V2/,/^endef$/d' \
+    "$DOCKER_MAKEFILE" 2>/dev/null || true
 
-    sed -i '/# OPENWRT_DOCKER_JSONSCHEMA_FIX_V2/,/^endef$/d' \
-        "$DOCKER_MAKEFILE" 2>/dev/null || true
+sed -i '/# OPENWRT_DOCKER_JSONSCHEMA_FIX_V3/,/^endef$/d' \
+    "$DOCKER_MAKEFILE" 2>/dev/null || true
 
-    sed -i '/# OPENWRT_DOCKER_JSONSCHEMA_FIX_V3/,/^endef$/d' \
-        "$DOCKER_MAKEFILE" 2>/dev/null || true
+sed -i '/# OPENWRT_DOCKER_JSONSCHEMA_FIX_V4/,/^endef$/d' \
+    "$DOCKER_MAKEFILE" 2>/dev/null || true
+
+sed -i '/# OPENWRT_DOCKER_JSONSCHEMA_FIX_V5/,/^endef$/d' \
+    "$DOCKER_MAKEFILE" 2>/dev/null || true
 
 
-    # --------------------------------------------------------
-    # 防止 V4 重复注入
-    # --------------------------------------------------------
+# ------------------------------------------------------------
+# 注入修复函数
+# ------------------------------------------------------------
 
-    if ! grep -q "OPENWRT_DOCKER_JSONSCHEMA_FIX_V4" "$DOCKER_MAKEFILE"; then
-
-        cat >> "$DOCKER_MAKEFILE" <<'EOF'
+cat >> "$DOCKER_MAKEFILE" <<'EOF'
 
 # ============================================================
-# OPENWRT_DOCKER_JSONSCHEMA_FIX_V4
+# OPENWRT_DOCKER_JSONSCHEMA_FIX_V5
 # ============================================================
 
 define Build/PrepareDockerJsonschema
@@ -104,7 +122,7 @@ define Build/PrepareDockerJsonschema
 	echo "============================================================"; \
 	\
 	WORKDIR="$(PKG_BUILD_DIR)/.go_work/build/src/github.com/docker/cli"; \
-	JSONSCHEMA="$$WORKDIR/vendor/github.com/santhosh-tekuri/jsonschema/v6"; \
+	JSONSCHEMA_DIR="$$WORKDIR/vendor/github.com/santhosh-tekuri/jsonschema/v6"; \
 	\
 	echo "===> PKG_BUILD_DIR:"; \
 	echo "$(PKG_BUILD_DIR)"; \
@@ -112,42 +130,51 @@ define Build/PrepareDockerJsonschema
 	echo "===> Docker CLI work directory:"; \
 	echo "$$WORKDIR"; \
 	\
-	if [ ! -d "$$WORKDIR" ]; then \
-		echo "===> Creating Docker CLI work directory"; \
-		mkdir -p "$$WORKDIR"; \
-	fi; \
+	echo "===> Checking actual Docker CLI vendor tree..."; \
 	\
-	echo "===> Checking jsonschema vendor..."; \
-	\
-	if [ ! -d "$$JSONSCHEMA/metaschemas" ] || \
-	   [ -z "$$(find "$$JSONSCHEMA/metaschemas" -type f -print -quit 2>/dev/null)" ]; then \
+	if [ -d "$$JSONSCHEMA_DIR/metaschemas" ] && \
+	   [ -n "$$(find "$$JSONSCHEMA_DIR/metaschemas" -type f -print -quit 2>/dev/null)" ]; then \
+		echo "===> metaschemas already exists."; \
+	else \
 		\
-		echo "===> metaschemas missing from Docker CLI vendor"; \
+		echo "===> metaschemas is missing."; \
 		\
 		echo "===> Go version:"; \
 		go version; \
 		\
 		echo "===> Go module cache:"; \
-		echo "$$(go env GOPATH)/pkg/mod"; \
+		GOMODCACHE_DIR="$$(go env GOMODCACHE)"; \
+		echo "$$GOMODCACHE_DIR"; \
 		\
 		echo "===> Running go mod download..."; \
 		cd "$(PKG_BUILD_DIR)" && go mod download; \
 		\
-		echo "===> Searching jsonschema/v6 in module cache..."; \
+		echo "===> Searching jsonschema/v6 in Go module cache..."; \
 		\
-		SRC="$$(find "$$(go env GOPATH)/pkg/mod" \
+		SRC="$$(find "$$GOMODCACHE_DIR" \
 			-type d \
-			-path '*santhosh-tekuri/jsonschema/v6*' \
+			-path '*/github.com/santhosh-tekuri/jsonschema/v6@*' \
 			-print \
 			-quit 2>/dev/null)"; \
 		\
 		if [ -z "$$SRC" ]; then \
-			echo "===> jsonschema/v6 not found"; \
-			echo "===> Searching Go module cache again..."; \
-			find "$$(go env GOPATH)/pkg/mod" \
+			echo "===> Exact module path not found, searching jsonschema..."; \
+			SRC="$$(find "$$GOMODCACHE_DIR" \
+				-type d \
+				-path '*santhosh-tekuri/jsonschema/v6*' \
+				-print \
+				-quit 2>/dev/null)"; \
+		fi; \
+		\
+		if [ -z "$$SRC" ]; then \
+			echo "============================================================"; \
+			echo " ERROR: jsonschema/v6 module not found!"; \
+			echo "============================================================"; \
+			echo "GOMODCACHE: $$GOMODCACHE_DIR"; \
+			find "$$GOMODCACHE_DIR" \
 				-type d \
 				-path '*jsonschema*' \
-				-print 2>/dev/null | head -50 || true; \
+				-print 2>/dev/null | head -100 || true; \
 			exit 1; \
 		fi; \
 		\
@@ -155,88 +182,81 @@ define Build/PrepareDockerJsonschema
 		echo "$$SRC"; \
 		\
 		if [ ! -d "$$SRC/metaschemas" ]; then \
-			echo "ERROR: metaschemas directory does not exist in:"; \
+			echo "============================================================"; \
+			echo " ERROR: metaschemas directory not found in module!"; \
+			echo "============================================================"; \
 			echo "$$SRC"; \
+			find "$$SRC" -maxdepth 2 -type f -print 2>/dev/null | head -100 || true; \
 			exit 1; \
 		fi; \
 		\
-		mkdir -p "$$JSONSCHEMA"; \
-		rm -rf "$$JSONSCHEMA/metaschemas"; \
-		cp -a "$$SRC/metaschemas" "$$JSONSCHEMA/"; \
+		echo "===> Restoring metaschemas into actual Docker CLI vendor tree..."; \
+		mkdir -p "$$JSONSCHEMA_DIR"; \
+		rm -rf "$$JSONSCHEMA_DIR/metaschemas"; \
+		cp -a "$$SRC/metaschemas" "$$JSONSCHEMA_DIR/"; \
 		\
-		echo "===> metaschemas restored"; \
+		echo "===> metaschemas restored."; \
 	fi; \
 	\
 	echo "===> Final metaschemas check:"; \
 	\
-	if [ ! -d "$$JSONSCHEMA/metaschemas" ]; then \
-		echo "ERROR: metaschemas directory is missing"; \
+	if [ ! -d "$$JSONSCHEMA_DIR/metaschemas" ]; then \
+		echo "============================================================"; \
+		echo " ERROR: metaschemas directory is missing!"; \
+		echo "============================================================"; \
 		exit 1; \
 	fi; \
 	\
-	find "$$JSONSCHEMA/metaschemas" -type f -print; \
+	find "$$JSONSCHEMA_DIR/metaschemas" -type f -print; \
 	\
-	if [ -z "$$(find "$$JSONSCHEMA/metaschemas" -type f -print -quit 2>/dev/null)" ]; then \
-		echo "ERROR: metaschemas directory is empty"; \
+	if [ -z "$$(find "$$JSONSCHEMA_DIR/metaschemas" -type f -print -quit 2>/dev/null)" ]; then \
+		echo "============================================================"; \
+		echo " ERROR: metaschemas directory is empty!"; \
+		echo "============================================================"; \
 		exit 1; \
 	fi; \
 	\
-	echo "===> Docker CLI jsonschema fix completed."
+	echo "============================================================"; \
+	echo " Docker CLI jsonschema fix completed."; \
+	echo "============================================================"
 
 endef
 
 EOF
 
+
+# ============================================================
+# 在 Docker Build/Compile 阶段调用修复
+# ============================================================
+
+if grep -q '^define Build/Compile' "$DOCKER_MAKEFILE"; then
+
+    echo "===> Found Docker Build/Compile."
+
+    if grep -q '$(Build/PrepareDockerJsonschema)' "$DOCKER_MAKEFILE"; then
+        echo "===> Build/Compile jsonschema hook already exists."
     else
 
-        echo "===> Docker jsonschema V4 fix already installed."
+        sed -i \
+            '/^define Build\/Compile$/a\
+\t$(Build/PrepareDockerJsonschema)' \
+            "$DOCKER_MAKEFILE"
 
-    fi
-
-
-    # ========================================================
-    # 将 hook 插入 Docker 的 Build/Compile
-    # ========================================================
-
-    if grep -q '^define Build/Compile' "$DOCKER_MAKEFILE"; then
-
-        if ! grep -q '$(Build/PrepareDockerJsonschema)' "$DOCKER_MAKEFILE"; then
-
-            sed -i \
-                '/^define Build\/Compile$/a\	$(Build/PrepareDockerJsonschema)' \
-                "$DOCKER_MAKEFILE"
-
-            echo "===> jsonschema Build/Compile hook installed."
-
-        else
-
-            echo "===> jsonschema Build/Compile hook already exists."
-
-        fi
-
-    else
-
-        echo "============================================================"
-        echo " WARNING:"
-        echo " define Build/Compile was not found."
-        echo "============================================================"
-        echo ""
-        echo "Docker Makefile:"
-        echo "$DOCKER_MAKEFILE"
-        echo ""
-        echo "The jsonschema fix function was installed, but"
-        echo "the compile hook could not be inserted."
-        echo ""
+        echo "===> Build/Compile jsonschema hook installed."
 
     fi
 
 else
 
     echo "============================================================"
-    echo " ERROR: Docker Makefile not found!"
+    echo " WARNING: define Build/Compile not found."
     echo "============================================================"
-    echo "$DOCKER_MAKEFILE"
-    exit 1
+    echo " Docker jsonschema fix function was added,"
+    echo " but Build/Compile hook could not be installed."
+    echo ""
+    echo " Please check:"
+    echo " $DOCKER_MAKEFILE"
+    echo "============================================================"
 
 fi
 
@@ -257,12 +277,15 @@ sed -i \
 
 mkdir -p ./feeds/packages/utils/dockerd/patches
 
-wget -O ./feeds/packages/utils/dockerd/patches/001-skip-copy-nested-binaries.patch \
-  https://raw.githubusercontent.com/huajiaoshu520/X86-daed/refs/heads/main/patches/dockerd/patches/001-skip-copy-nested-binaries.patch
+wget -O \
+    ./feeds/packages/utils/dockerd/patches/001-skip-copy-nested-binaries.patch \
+    "https://raw.githubusercontent.com/huajiaoshu520/X86-daed/refs/heads/main/patches/dockerd/patches/001-skip-copy-nested-binaries.patch"
+
+echo "===> dockerd patch installed."
 
 
 # ============================================================
-# Docker daemon.json
+# fw4 docker
 # ============================================================
 
 mkdir -p package/base-files/files/etc/docker
@@ -281,7 +304,7 @@ EOF
 
 
 # ============================================================
-# Docker dockerd UCI config
+# dockerd UCI config
 # ============================================================
 
 mkdir -p package/base-files/files/etc/config
@@ -311,6 +334,7 @@ echo " Docker DIY configuration completed!"
 echo "============================================================"
 echo " Docker CLI : 29.8.0"
 echo " dockerd    : 29.8.0"
-echo " jsonschema : V4 fix enabled"
+echo " jsonschema : metaschemas auto-fix enabled"
+echo " dockerd patch : installed"
 echo "============================================================"
 ```
