@@ -60,34 +60,13 @@ define Build/Prepare
 	fi
 endef
 
-# Docker CLI 29.8.0 jsonschema/v6 fix
-#
-# Docker CLI 29.8.0 uses:
-#
-# github.com/santhosh-tekuri/jsonschema/v6
-#
-# loader.go contains:
-#
-# //go:embed metaschemas
-#
-# OpenWrt's .go_work vendor tree may miss the metaschemas directory.
-# Restore it from the Go module cache before scripts/build/binary runs.
-
 define Build/PrepareJsonschema
-	@echo "===> Docker CLI 29.8.0: checking jsonschema/v6 metaschemas"; \
 	WORKDIR="$(PKG_BUILD_DIR)/.go_work/build/src/github.com/docker/cli"; \
 	JSONSCHEMA_DIR="$$WORKDIR/vendor/github.com/santhosh-tekuri/jsonschema/v6"; \
 	METASCHEMA_DIR="$$JSONSCHEMA_DIR/metaschemas"; \
 	\
-	echo "===> Vendor path: $$JSONSCHEMA_DIR"; \
-	\
-	if [ -d "$$METASCHEMA_DIR" ] && \
-	   [ -n "$$(find "$$METASCHEMA_DIR" -type f -print -quit 2>/dev/null)" ]; then \
-		echo "===> metaschemas already exists."; \
-	else \
-		echo "===> metaschemas is missing."; \
-		echo "===> Preparing jsonschema/v6 module cache..."; \
-		\
+	if [ ! -d "$$METASCHEMA_DIR" ] || \
+	   [ -z "$$(find "$$METASCHEMA_DIR" -type f -print -quit 2>/dev/null)" ]; then \
 		cd "$(PKG_BUILD_DIR)" && \
 		PATH="$(STAGING_DIR_HOSTPKG)/lib/go-$(GO_HOST_VERSION)/bin:$$PATH" \
 		GOENV=off \
@@ -101,8 +80,6 @@ define Build/PrepareJsonschema
 			go env GOMODCACHE \
 		)"; \
 		\
-		echo "===> GOMODCACHE: $$GOMODCACHE_DIR"; \
-		\
 		SRC="$$(find "$$GOMODCACHE_DIR" \
 			-type d \
 			-path '*/github.com/santhosh-tekuri/jsonschema/v6@*' \
@@ -110,41 +87,21 @@ define Build/PrepareJsonschema
 			-quit 2>/dev/null)"; \
 		\
 		if [ -z "$$SRC" ]; then \
-			echo "ERROR: github.com/santhosh-tekuri/jsonschema/v6 module not found."; \
-			echo "===> Searching jsonschema modules:"; \
-			find "$$GOMODCACHE_DIR" \
-				-type d \
-				-path '*santhosh-tekuri*jsonschema*' \
-				-print 2>/dev/null | head -100 || true; \
 			exit 1; \
 		fi; \
-		\
-		echo "===> Found jsonschema/v6 module:"; \
-		echo "$$SRC"; \
 		\
 		if [ ! -d "$$SRC/metaschemas" ]; then \
-			echo "ERROR: metaschemas directory not found in:"; \
-			echo "$$SRC"; \
 			exit 1; \
 		fi; \
 		\
-		echo "===> Restoring metaschemas into OpenWrt .go_work vendor tree..."; \
 		mkdir -p "$$JSONSCHEMA_DIR"; \
 		rm -rf "$$METASCHEMA_DIR"; \
 		cp -a "$$SRC/metaschemas" "$$JSONSCHEMA_DIR/"; \
-		\
-		echo "===> metaschemas restored."; \
 	fi; \
-	\
-	echo "===> Final jsonschema/v6 check:"; \
-	find "$$METASCHEMA_DIR" -type f -print; \
 	\
 	if [ -z "$$(find "$$METASCHEMA_DIR" -type f -print -quit 2>/dev/null)" ]; then \
-		echo "ERROR: jsonschema/v6 metaschemas is empty."; \
 		exit 1; \
-	fi; \
-	\
-	echo "===> Docker CLI 29.8.0 jsonschema fix OK."
+	fi
 endef
 
 define Build/Compile
