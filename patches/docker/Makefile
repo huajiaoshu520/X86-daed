@@ -1,24 +1,33 @@
 include $(TOPDIR)/rules.mk
+
 PKG_NAME:=docker
 PKG_VERSION:=29.8.0
 PKG_RELEASE:=1
 PKG_LICENSE:=Apache-2.0
 PKG_LICENSE_FILES:=LICENSE
+
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_GIT_URL:=github.com/docker/cli
 PKG_GIT_REF:=v$(PKG_VERSION)
 PKG_SOURCE_URL:=https://codeload.$(PKG_GIT_URL)/tar.gz/$(PKG_GIT_REF)?
 PKG_HASH:=c5fadbc00c02dbecb1b7c9936e188baf9c80421a9107e7e9ad36a0923a0fc764
 PKG_GIT_SHORT_COMMIT:=88096ef
+
 PKG_MAINTAINER:=Gerard Ryan <G.M0N3Y.2503@gmail.com>
+
 PKG_BUILD_DEPENDS:=golang/host dockerd
 PKG_BUILD_PARALLEL:=1
+
 GO_PKG:=$(PKG_GIT_URL)
+
 include $(INCLUDE_DIR)/package.mk
 include ../../lang/golang/golang-package.mk
+
 EMPTY:=
 SPACE:=$(EMPTY) $(EMPTY)
+
 ARCH_DEPENDS:=@($(subst $(SPACE),||,$(strip $(filter-out mips mips64 mipsel mips64el,$(subst ||,$(SPACE),$(patsubst @(%),%,$(GO_ARCH_DEPENDS)))))))
+
 define Package/docker
 	SECTION:=utils
 	CATEGORY:=Utilities
@@ -26,16 +35,22 @@ define Package/docker
 	URL:=https://www.docker.com/
 	DEPENDS:=$(ARCH_DEPENDS)
 endef
+
 define Package/docker/description
 	The CLI used in the Docker CE and Docker EE products.
 endef
+
 GO_PKG_INSTALL_EXTRA:=\
 	cli/compose/schema/data \
 	vendor/google.golang.org/protobuf/internal/editiondefaults/editions_defaults.binpb
+
 TAR_OPTIONS:=--strip-components 1 $(TAR_OPTIONS)
 TAR_CMD=$(HOST_TAR) -C $(1) $(TAR_OPTIONS)
+
 TARGET_LDFLAGS += $(if $(CONFIG_USE_GLIBC),-lc -lgcc)
+
 # Verify PKG_GIT_SHORT_COMMIT
+
 define Build/Prepare
 	$(Build/Prepare/Default)
 	EXPECTED_PKG_GIT_SHORT_COMMIT=$$$$( $(CURDIR)/../dockerd/git-short-commit.sh '$(PKG_GIT_URL)' '$(PKG_GIT_REF)' '$(TMP_DIR)/git-short-commit/$(PKG_NAME)-$(PKG_VERSION)' ); \
@@ -44,33 +59,24 @@ define Build/Prepare
 		exit 1; \
 	fi
 endef
+
 # Docker CLI 29.8.0 jsonschema/v6 fix
+
 define Build/PrepareJsonschema
-	cd $(PKG_BUILD_DIR); \
+	cd "$(PKG_BUILD_DIR)/.go_work/build/src/github.com/docker/cli"; \
 	$(GO_PKG_VARS) \
-	go mod download; \
-	\
-	GOMODCACHE="$$( $(GO_PKG_VARS) go env GOMODCACHE )"; \
-	\
-	SRC="$$(find "$$GOMODCACHE" \
-		-type d \
-		-path '*/github.com/santhosh-tekuri/jsonschema/v6@*' \
-		-print \
-		-quit 2>/dev/null)"; \
-	\
-	if [ -z "$$SRC" ]; then \
-		exit 1; \
-	fi; \
-	\
-	if [ ! -d "$$SRC/metaschemas" ]; then \
-		exit 1; \
-	fi; \
-	\
+	go mod download -modcacherw; \
 	mkdir -p "$(PKG_BUILD_DIR)/.go_work/build/src/github.com/docker/cli/vendor/github.com/santhosh-tekuri/jsonschema/v6"; \
 	rm -rf "$(PKG_BUILD_DIR)/.go_work/build/src/github.com/docker/cli/vendor/github.com/santhosh-tekuri/jsonschema/v6/metaschemas"; \
-	cp -a "$$SRC/metaschemas" \
+	cp -a "$$(find "$(GO_MOD_CACHE_DIR)/github.com/santhosh-tekuri/jsonschema" \
+		-maxdepth 2 \
+		-type d \
+		-name 'v6@*' \
+		-print \
+		-quit)/metaschemas" \
 		"$(PKG_BUILD_DIR)/.go_work/build/src/github.com/docker/cli/vendor/github.com/santhosh-tekuri/jsonschema/v6/"
 endef
+
 define Build/Compile
 	$(Build/PrepareJsonschema)
 	cd $(PKG_BUILD_DIR); \
@@ -80,8 +86,10 @@ define Build/Compile
 	TARGET=$(PKG_BUILD_DIR)/build \
 	./scripts/build/binary
 endef
+
 define Package/docker/install
 	$(INSTALL_DIR) $(1)/usr/bin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/build/docker $(1)/usr/bin/
 endef
+
 $(eval $(call BuildPackage,docker))
