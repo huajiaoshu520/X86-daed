@@ -27,7 +27,7 @@ sed -i -e 's/29.6.1/29.8.0/g' \
 
 #适配docker29.8.0
 wget -O ./feeds/packages/utils/docker/Makefile \
-  https://raw.githubusercontent.com/sbwml/packages_utils_docker/refs/heads/main/Makefile
+  https://raw.githubusercontent.com/huajiaoshu520/X86-daed/refs/heads/main/patches/docker/Makefile
 
 # docker
 # wget https://codeload.github.com/docker/cli/tar.gz/v29.7.2
