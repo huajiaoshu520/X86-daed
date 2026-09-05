@@ -25,6 +25,10 @@ sed -i -e 's/29.6.1/29.8.0/g' \
        -e 's/a97bd870c4b072b7d9cc053b2a806ca3d920f192f9dc6a662e17c1b69f56f2e1/e75ffb5d2ddc1fd98138fdb5e29f707b59f415ec8697e73b8bbdf8bbbb4be8eb/g' \
        -e 's/8ec5ab3/3ce5872/g' ./feeds/packages/utils/dockerd/Makefile
 
+#适配docker29.8.0
+wget -O ./feeds/packages/utils/docker/Makefile \
+  https://raw.githubusercontent.com/sbwml/packages_utils_docker/refs/heads/main/Makefile
+
 # docker
 # wget https://codeload.github.com/docker/cli/tar.gz/v29.7.2
 sed -i -e 's/29.6.1/29.8.0/g' \
@@ -39,8 +43,7 @@ sed -i -e '\|$(call EnsureVendoredVersion,containerd)|{s/^/# /}' \
 mkdir -p ./feeds/packages/utils/dockerd/patches
 wget -O ./feeds/packages/utils/dockerd/patches/001-skip-copy-nested-binaries.patch \
   https://raw.githubusercontent.com/huajiaoshu520/X86-daed/refs/heads/main/patches/dockerd/patches/001-skip-copy-nested-binaries.patch
-wget -O ./feeds/packages/utils/docker/Makefile \
-  https://raw.githubusercontent.com/sbwml/packages_utils_docker/refs/heads/main/Makefile
+
 # fw4 docker
 mkdir -p package/base-files/files/etc/docker
 
