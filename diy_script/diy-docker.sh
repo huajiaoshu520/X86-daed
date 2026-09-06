@@ -26,8 +26,10 @@ sed -i -e 's/29.6.1/29.8.0/g' \
        -e 's/8ec5ab3/3ce5872/g' ./feeds/packages/utils/dockerd/Makefile
 
 #适配docker29.8.0
-wget -O ./feeds/packages/utils/docker/Makefile \
-  https://raw.githubusercontent.com/huajiaoshu520/X86-daed/refs/heads/main/patches/docker/test
+#wget -O ./feeds/packages/utils/docker/Makefile \
+#  https://raw.githubusercontent.com/huajiaoshu520/X86-daed/refs/heads/main/patches/docker/test
+sed -i '/^[[:space:]]*cli\/compose\/schema\/data[[:space:]]*\\$/a\
+\tvendor/github.com/santhosh-tekuri/jsonschema/v6/metaschemas \\' ./feeds/packages/utils/docker/Makefile
 
 # docker
 # wget https://codeload.github.com/docker/cli/tar.gz/v29.7.2
