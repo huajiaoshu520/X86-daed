@@ -43,7 +43,7 @@ sed -i -e 's/29.6.1/29.8.0/g' \
 #       ./feeds/packages/utils/dockerd/Makefile
 
 # 测试
-wget -o ./feeds/packages/utils/containerd/Makefile \
+wget -O ./feeds/packages/utils/containerd/Makefile \
   https://raw.githubusercontent.com/sbwml/packages_utils_containerd/refs/heads/main/Makefile
   
 # 补丁      
