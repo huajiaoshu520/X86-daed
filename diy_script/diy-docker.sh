@@ -24,18 +24,15 @@
 sed -i -e 's/29.6.1/29.8.0/g' \
        -e 's/a97bd870c4b072b7d9cc053b2a806ca3d920f192f9dc6a662e17c1b69f56f2e1/e75ffb5d2ddc1fd98138fdb5e29f707b59f415ec8697e73b8bbdf8bbbb4be8eb/g' \
        -e 's/8ec5ab3/3ce5872/g' ./feeds/packages/utils/dockerd/Makefile
-
-# containerd      
-# wget https://codeload.github.com/containerd/containerd/tar.gz/v2.3.4
-sed -i -e 's/2.2.5/2.3.4/g' \
-       -e 's/ca9c2084ab92b3ce073fa4e43f29a0cad33c2ea71d4e09777acfc082b90049db/175bbf57d637c987fa742f846b43b1b8ba2c61af6a9eaec619c625e4a8a19b69/g' ./feeds/packages/utils/containerd/Makefile
-sed -i 's/containerd-shim,containerd-shim-runc-v1,//g' ./feeds/packages/utils/containerd/Makefile
-
-# runc
-# https://codeload.github.com/opencontainers/runc/tar.gz/v1.3.4
-sed -i -e 's/1.3.6/1.5.1/g' \
-       -e 's/8816e8d4181d13012d16733e837425f5f67df57dfac28bc58a68f7dfcd54291b/32286f18899a644ec7c1589688a9600ba54cc65264f23f1f5877ba214ca76e75/g' ./feeds/packages/utils/runc/Makefile
-
+       
+#containerd       
+wget -O ./feeds/packages/utils/containerd/Makefile \
+  https://raw.githubusercontent.com/huajiaoshu520/X86-daed/refs/heads/main/patches/containerd/Makefile
+  
+#runc  
+wget -O ./feeds/packages/utils/runc/Makefile \
+  https://raw.githubusercontent.com/huajiaoshu520/X86-daed/refs/heads/main/patches/runc/Makefile
+  
 #适配docker29.8.0
 #wget -O ./feeds/packages/utils/docker/Makefile \
 #  https://raw.githubusercontent.com/huajiaoshu520/X86-daed/refs/heads/main/patches/docker/test
@@ -52,12 +49,6 @@ sed -i -e 's/29.6.1/29.8.0/g' \
 #sed -i -e '\|$(call EnsureVendoredVersion,containerd)|{s/^/# /}' \
 #       -e '\|$(call EnsureVendoredVersion,runc)|{s/^/# /}' \
 #       ./feeds/packages/utils/dockerd/Makefile
-
-# 测试
-#wget -O ./feeds/packages/utils/containerd/Makefile \
-#  https://raw.githubusercontent.com/sbwml/packages_utils_containerd/refs/heads/main/Makefile
-#wget -O ./feeds/packages/utils/runc/Makefile \
-#  https://raw.githubusercontent.com/sbwml/packages_utils_runc/refs/heads/main/Makefile
   
 # 补丁      
 #mkdir -p ./feeds/packages/utils/dockerd/patches
