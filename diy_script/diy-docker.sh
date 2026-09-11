@@ -45,11 +45,13 @@ sed -i -e 's/29.6.1/29.8.0/g' \
 # 测试
 wget -O ./feeds/packages/utils/containerd/Makefile \
   https://raw.githubusercontent.com/sbwml/packages_utils_containerd/refs/heads/main/Makefile
+wget -O ./feeds/packages/utils/runc/Makefile \
+  https://raw.githubusercontent.com/sbwml/packages_utils_runc/refs/heads/main/Makefile
   
 # 补丁      
-mkdir -p ./feeds/packages/utils/dockerd/patches
-wget -O ./feeds/packages/utils/dockerd/patches/001-skip-copy-nested-binaries.patch \
-  https://raw.githubusercontent.com/huajiaoshu520/X86-daed/refs/heads/main/patches/dockerd/patches/001-skip-copy-nested-binaries.patch
+#mkdir -p ./feeds/packages/utils/dockerd/patches
+#wget -O ./feeds/packages/utils/dockerd/patches/001-skip-copy-nested-binaries.patch \
+#  https://raw.githubusercontent.com/huajiaoshu520/X86-daed/refs/heads/main/patches/dockerd/patches/001-skip-copy-nested-binaries.patch
 
 # fw4 docker
 mkdir -p package/base-files/files/etc/docker
