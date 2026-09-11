@@ -3,13 +3,6 @@ name: Update containerd and runc
 on:
   workflow_dispatch:
 
-  schedule:
-    # 每天北京时间 08:30 检查一次
-    - cron: '30 0 * * *'
-
-permissions:
-  contents: write
-
 jobs:
   update:
     runs-on: ubuntu-latest
