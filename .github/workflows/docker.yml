@@ -524,12 +524,14 @@ jobs:
       # 提交自动更新
       # ==========================================================
       - name: 提交自动更新 # Commit Docker update
+        id: docker_update
         shell: bash
         run: |
           set -euo pipefail
 
           if git diff --quiet -- diy_script/diy-docker.sh; then
             echo "No Docker update."
+            echo "updated=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -541,6 +543,23 @@ jobs:
           git commit -m "chore: update Docker version"
 
           git push
+
+          echo "updated=true" >> "$GITHUB_OUTPUT"
+
+      # ==========================================================
+      # Docker 更新后同步 containerd / runc
+      # ==========================================================
+      - name: 启动 Sync Moby Runtime
+        if: steps.docker_update.outputs.updated == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Docker update detected."
+          echo "Starting sync-moby-runtime.yml..."
+
+          gh workflow run sync-moby-runtime.yml \
+            --ref main
 
       # ==========================================================
       # 删除工作流程运行
