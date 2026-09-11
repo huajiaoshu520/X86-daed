@@ -1,4 +1,3 @@
-```yaml
 name: Update containerd and runc
 
 on:
@@ -193,4 +192,3 @@ jobs:
           git commit -m "container: update runtime dependencies for Moby ${{ steps.moby.outputs.version }}"
 
           git push
-```
