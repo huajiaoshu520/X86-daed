@@ -38,10 +38,14 @@ sed -i -e 's/29.6.1/29.8.0/g' \
        -e 's/8900f1d/88096ef/g' ./feeds/packages/utils/docker/Makefile
 
 # 禁用
-sed -i -e '\|$(call EnsureVendoredVersion,containerd)|{s/^/# /}' \
-       -e '\|$(call EnsureVendoredVersion,runc)|{s/^/# /}' \
-       ./feeds/packages/utils/dockerd/Makefile
+#sed -i -e '\|$(call EnsureVendoredVersion,containerd)|{s/^/# /}' \
+#       -e '\|$(call EnsureVendoredVersion,runc)|{s/^/# /}' \
+#       ./feeds/packages/utils/dockerd/Makefile
 
+# 测试
+wget -o ./feeds/packages/utils/containerd/Makefile \
+  https://raw.githubusercontent.com/sbwml/packages_utils_containerd/refs/heads/main/Makefile
+  
 # 补丁      
 mkdir -p ./feeds/packages/utils/dockerd/patches
 wget -O ./feeds/packages/utils/dockerd/patches/001-skip-copy-nested-binaries.patch \
