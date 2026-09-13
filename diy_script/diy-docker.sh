@@ -55,6 +55,16 @@ sed -i -e 's/29.6.1/29.8.0/g' \
 #wget -O ./feeds/packages/utils/dockerd/patches/001-skip-copy-nested-binaries.patch \
 #  https://raw.githubusercontent.com/huajiaoshu520/X86-daed/refs/heads/main/patches/dockerd/patches/001-skip-copy-nested-binaries.patch
 
+# docker buildx
+BUILDX_VERSION="0.37.1"
+
+mkdir -p package/base-files/files/usr/libexec/docker/cli-plugins
+
+wget -O package/base-files/files/usr/libexec/docker/cli-plugins/docker-buildx \
+  "https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-amd64"
+
+chmod +x package/base-files/files/usr/libexec/docker/cli-plugins/docker-buildx
+
 # fw4 docker
 mkdir -p package/base-files/files/etc/docker
 
