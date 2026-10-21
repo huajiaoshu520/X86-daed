@@ -3,7 +3,7 @@ name: docker auto update
 on:
   workflow_dispatch:
   schedule:
-    - cron: "52 22 * * *"
+    - cron: "53 22 * * *"
 
 jobs:
   build:
