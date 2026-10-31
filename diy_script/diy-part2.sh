@@ -67,3 +67,6 @@ config mount
 	option uuid 'b3b41f9e-49d4-41d8-b517-965af8d385e6'
 	option enabled '1'
 EOF
+
+# 集成 LuCI 在线更新功能
+python3 "$GITHUB_WORKSPACE/scripts/patch-online-update.py" "$PWD" || exit 1
