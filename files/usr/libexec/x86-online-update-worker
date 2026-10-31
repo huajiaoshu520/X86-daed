@@ -37,12 +37,13 @@ local function latest()
    local prefix='https://github.com/'..selected.repo..'/releases/download/'
    local url=a.browser_download_url or ''
    if url:sub(1,#prefix)~=prefix or not url:sub(#prefix+1):match('^[%w%.%-%_/]+%.img%.gz$') then error('固件地址异常') end
-   run('/usr/libexec/x86-online-record verify >/tmp/x86-online-record-verify.log 2>&1')
+   local verification=json.parse(run('/usr/libexec/x86-online-record verify 2>/tmp/x86-online-record-verify-error.log')) or {}
    local records=json.parse(fs.readfile('/etc/x86-online-installed.json') or '') or {}
    local record=records[selected.repo]
    local boot=(fs.readfile('/proc/sys/kernel/random/boot_id') or ''):gsub('%s+$','')
    if type(record)~='table' or record.verified_boot~=boot then record=nil end
    local state=record and (record.sha256sum==hash and 'matched' or 'different') or 'unknown'
+   if not record and verification.busy then state='verifying' end
    return {tag=r.tag_name,name=a.name,size=a.size,sha256sum=hash,url=a.browser_download_url,
     comparison=state,installed_sha256=record and record.sha256sum or '',installed_tag=record and record.tag or '',
     latest_kernel=a.name:match('%-daed%-(.-)%-openwrt%-') or ''}
