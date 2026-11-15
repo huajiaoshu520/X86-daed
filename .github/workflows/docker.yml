@@ -62,6 +62,8 @@ jobs:
       # ==========================================================
       - name: Docker 自动检测 / 更新 # Check and update Docker version
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
@@ -86,6 +88,7 @@ jobs:
           echo "Getting latest Moby release..."
 
           MOBY_TAG=$(curl -fsSL \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/moby/moby/releases/latest |
             jq -r '.tag_name')
@@ -144,6 +147,7 @@ jobs:
           echo "Checking Docker CLI tag: $CLI_TAG"
 
           CLI_TAG_HTTP=$(curl -s \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
             -o /dev/null \
             -w "%{http_code}" \
             "https://api.github.com/repos/docker/cli/git/ref/tags/${CLI_TAG}")
