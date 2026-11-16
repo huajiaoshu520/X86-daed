@@ -9,6 +9,21 @@
 # File name: diy-part1.sh
 # Description: OpenWrt DIY script part 1 (Before Update feeds)
 
+# LEDE 仍使用 gettext-full 0.22.5 时，应用上游的 0.24.2 更新
+if grep -Fxq 'PKG_VERSION:=0.22.5' package/libs/gettext-full/Makefile; then
+    echo "正在应用 gettext-full 0.24.2 更新"
+
+    (
+        set -euo pipefail
+        gettext_update=5ba7ce24dc18e08e7a62ce823df1611f7bf04b18
+        git diff "${gettext_update}^" "$gettext_update" -- package/libs/gettext-full |
+            git apply
+    ) || {
+        echo "错误：gettext-full 补丁应用失败，请检查当前 LEDE 源码" >&2
+        exit 1
+    }
+fi
+
 # Uncomment a feed source
 #sed -i 's/^#\(.*helloworld\)/\1/' feeds.conf.default
 
