@@ -8,10 +8,7 @@
 # https://github.com/huajiaoshu520/X86
 # File name: diy-part1.sh
 # Description: OpenWrt DIY script part 1 (Before Update feeds)
-# 使用 GitHub 下载 erofs-utils 源码
-sed -i \
-    's|^PKG_SOURCE_URL[:]*=.*|PKG_SOURCE_URL:=https://codeload.github.com/erofs/erofs-utils/tar.gz/refs/tags/v$(PKG_VERSION)?|' \
-    tools/erofs-utils/Makefile
+
 # Uncomment a feed source
 #sed -i 's/^#\(.*helloworld\)/\1/' feeds.conf.default
 
